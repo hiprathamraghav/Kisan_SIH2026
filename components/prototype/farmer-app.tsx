@@ -1,0 +1,767 @@
+"use client";
+
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Banknote,
+  Bell,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  CircleAlert,
+  Clock3,
+  FileText,
+  HelpCircle,
+  Home,
+  Landmark,
+  Languages,
+  MapPin,
+  Menu,
+  Sprout,
+  Tractor,
+  User,
+  UsersRound,
+  Wheat,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { demoBookingId, type Scheme, type Slot } from "../../lib/prototype-data";
+import { cn } from "../ui/cn";
+import { PrototypeProvider, usePrototype } from "./prototype-store";
+
+type FarmerScreen = "dashboard" | "book" | "queue" | "status" | "payment" | "schemes" | "scheme-detail";
+
+const navItems = [
+  { href: "/farmer", label: "Dashboard" },
+  { href: "/farmer#bookings", label: "My Bookings" },
+  { href: "/farmer/status", label: "Procurement Status" },
+  { href: "/farmer/schemes", label: "Government Schemes" },
+  { href: "/farmer#help", label: "Help" },
+];
+
+const crops = ["Wheat", "Paddy / Rice", "Maize", "Other"];
+const steps = ["Farmer Details", "Procurement Details", "Select Slot", "Review & Confirm"];
+
+export function FarmerApp({ screen, schemeId }: { screen: FarmerScreen; schemeId?: string }) {
+  return (
+    <PrototypeProvider>
+      <FarmerShell screen={screen} schemeId={schemeId} />
+    </PrototypeProvider>
+  );
+}
+
+function FarmerShell({ screen, schemeId }: { screen: FarmerScreen; schemeId?: string }) {
+  const { state, setLanguage } = usePrototype();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const booking = state.bookings.find((item) => item.id === demoBookingId) || state.bookings[0];
+
+  return (
+    <main className="min-h-screen bg-[#f7f4eb] text-[#12351f]">
+      <header className="sticky top-0 z-40 border-b border-green-900/10 bg-[#fffdf6]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/" className="flex items-center gap-3" aria-label="Kisan SIH home">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#1e6b3b] text-white shadow-lg shadow-green-900/20">
+              <Wheat className="h-6 w-6" />
+            </span>
+            <span className="leading-tight">
+              <span className="block text-base font-black">Kisan Procurement</span>
+              <span className="block text-xs font-semibold text-green-800/70">Digital Mandi Portal</span>
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-1 rounded-full border border-green-900/10 bg-white p-1 shadow-sm lg:flex">
+            {navItems.map((item) => (
+              <Link key={item.label} href={item.href} className="rounded-full px-4 py-2 text-sm font-bold text-green-950/70 transition hover:bg-green-50 hover:text-green-800">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setLanguage(state.language === "en" ? "hi" : "en")}
+              className="hidden min-h-11 items-center gap-2 rounded-full border border-green-900/10 bg-white px-3 text-sm font-bold text-green-900 shadow-sm sm:inline-flex"
+            >
+              <Languages className="h-4 w-4" />
+              {state.language === "en" ? "English" : "Hindi"}
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setProfileOpen((open) => !open)}
+                className="flex min-h-11 items-center gap-2 rounded-full border border-green-900/10 bg-white px-2 py-1 shadow-sm sm:px-3"
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-[#1e6b3b] text-xs font-black text-white">RK</span>
+                <span className="hidden text-left text-xs leading-tight sm:block">
+                  <strong className="block">{state.farmerProfile.name}</strong>
+                  <span className="text-green-900/60">{state.farmerProfile.district}, UP</span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-green-900/60" />
+              </button>
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-green-900/10 bg-white p-2 text-sm font-semibold shadow-xl">
+                  {["My Profile", "My Bookings", "Notifications", "Help", "Logout"].map((item) => (
+                    <button key={item} className="block w-full rounded-xl px-3 py-2 text-left hover:bg-green-50">
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button className="grid h-11 w-11 place-items-center rounded-full bg-green-800 text-white lg:hidden" onClick={() => setMenuOpen((open) => !open)} aria-label="Open menu">
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+        {menuOpen && (
+          <nav className="grid gap-2 border-t border-green-900/10 bg-white px-4 py-4 lg:hidden">
+            {navItems.map((item) => (
+              <Link key={item.label} href={item.href} onClick={() => setMenuOpen(false)} className="rounded-2xl bg-green-50 px-4 py-3 text-sm font-bold text-green-950">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+      </header>
+
+      {state.centre.status === "delayed" && (
+        <div className="bg-amber-100 px-4 py-3 text-center text-sm font-bold text-amber-900">
+          {state.centre.delayMessage || "Procurement centre is experiencing a delay."}
+        </div>
+      )}
+
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
+        {screen === "dashboard" && <FarmerDashboard booking={booking} />}
+        {screen === "book" && <BookingFlow />}
+        {screen === "queue" && <LiveQueue booking={booking} />}
+        {screen === "status" && <ProcurementStatus booking={booking} />}
+        {screen === "payment" && <PaymentStatusView />}
+        {screen === "schemes" && <SchemesList />}
+        {screen === "scheme-detail" && <SchemeDetail schemeId={schemeId} />}
+      </div>
+
+      <Link href="/farmer/book" className="fixed bottom-4 left-4 right-4 z-30 rounded-2xl bg-[#1e6b3b] px-5 py-4 text-center text-base font-black text-white shadow-2xl shadow-green-900/30 sm:hidden">
+        Book Procurement Slot
+      </Link>
+    </main>
+  );
+}
+
+function FarmerDashboard({ booking }: { booking: NonNullable<ReturnType<typeof usePrototype>["state"]["bookings"][number]> }) {
+  const { state } = usePrototype();
+  const noBooking = state.bookings.length === 0;
+
+  return (
+    <div className="space-y-6 pb-20 sm:pb-0">
+      <section className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
+        <div className="rounded-[2rem] bg-[#1d693b] p-6 text-white shadow-xl shadow-green-900/20 sm:p-8">
+          <p className="text-sm font-bold text-lime-100">Digital Procurement & Queue Management</p>
+          <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">Namaste, {state.farmerProfile.name.split(" ")[0]}</h1>
+          <p className="mt-3 max-w-2xl text-lg leading-relaxed text-white/85">Manage your procurement booking, queue and payment status from one place.</p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link href="/farmer/book" className="rounded-2xl bg-white px-5 py-3 text-base font-black text-green-900 shadow-lg">Book New Slot</Link>
+            <Link href="/farmer/queue" className="rounded-2xl border border-white/35 px-5 py-3 text-base font-black text-white">View Live Queue</Link>
+          </div>
+        </div>
+        <UpcomingBookingCard booking={booking} noBooking={noBooking} />
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatusCard icon={CalendarDays} title="Upcoming Slot" value={noBooking ? "No slot" : "18 Sept, 10:00 AM"} note={noBooking ? "Book a slot" : "Confirmed"} tone="green" href="/farmer/book" />
+        <StatusCard icon={UsersRound} title="Queue Position" value={booking.bookingStatus === "called" ? "Your turn" : `#${booking.queuePosition}`} note={booking.bookingStatus === "called" ? "Proceed to Counter 2" : `${booking.queueAhead} farmers ahead`} tone="blue" href="/farmer/queue" />
+        <StatusCard icon={Wheat} title="Procurement Status" value={statusLabel(booking.procurementStatus)} note="Track every step" tone="amber" href="/farmer/status" />
+        <StatusCard icon={Banknote} title="Payment Status" value={paymentLabel(booking.paymentStatus)} note={`Rs. ${booking.amount.toLocaleString("en-IN")}`} tone="violet" href="/farmer/payment" />
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div id="bookings" className="rounded-[1.5rem] border border-green-900/10 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-black">My Procurement Bookings</h2>
+            <Link href="/farmer/book" className="hidden rounded-full bg-green-50 px-4 py-2 text-sm font-black text-green-800 sm:inline-flex">View All Bookings</Link>
+          </div>
+          <div className="mt-5 flex gap-4 overflow-x-auto pb-2">
+            {state.bookings.map((item) => (
+              <BookingCard key={item.id} booking={item} />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-[1.5rem] border border-green-900/10 bg-white p-5 shadow-sm">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-green-100 text-green-800">
+              <Tractor className="h-6 w-6" />
+            </span>
+            <h2 className="mt-4 text-2xl font-black">Book a Procurement Slot</h2>
+            <p className="mt-2 text-base leading-relaxed text-green-950/70">Avoid long queues. Choose a date and time before visiting the procurement centre.</p>
+            <Link href="/farmer/book" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#1e6b3b] px-5 font-black text-white">
+              Book New Slot <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <NotificationsPreview />
+        </div>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <SchemesPreview />
+        <div id="help" className="rounded-[1.5rem] border border-blue-900/10 bg-blue-50 p-5">
+          <HelpCircle className="h-8 w-8 text-blue-700" />
+          <h2 className="mt-3 text-xl font-black text-blue-950">Need help?</h2>
+          <p className="mt-2 text-sm leading-relaxed text-blue-950/70">Visit the procurement centre help desk or call the farmer support helpline for booking, queue, payment, or scheme support.</p>
+          <button className="mt-4 rounded-xl bg-blue-700 px-4 py-3 text-sm font-black text-white">Call Help Desk</button>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <EmptyState title="No Upcoming Booking" message="You do not have another upcoming procurement slot after this booking." action="Book a Slot" />
+        <EmptyState title="Payment Pending" message="Your payment is being processed. No action is needed from your side." action="Track Payment" />
+      </section>
+    </div>
+  );
+}
+
+function UpcomingBookingCard({ booking, noBooking }: { booking: NonNullable<ReturnType<typeof usePrototype>["state"]["bookings"][number]>; noBooking: boolean }) {
+  if (noBooking) {
+    return (
+      <div className="rounded-[2rem] border border-dashed border-green-900/20 bg-white p-6 shadow-sm">
+        <h2 className="text-2xl font-black">No Upcoming Booking</h2>
+        <p className="mt-2 text-green-950/70">You do not have an upcoming procurement slot.</p>
+        <Link href="/farmer/book" className="mt-5 inline-flex rounded-2xl bg-green-700 px-5 py-3 font-black text-white">Book a Slot</Link>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-[2rem] border border-green-900/10 bg-white p-6 shadow-sm">
+      <p className="text-sm font-black uppercase tracking-wide text-green-700">Upcoming Procurement</p>
+      <h2 className="mt-3 text-3xl font-black">{booking.crop} Procurement</h2>
+      <div className="mt-5 grid gap-3 text-base font-semibold text-green-950/75">
+        <InfoLine icon={MapPin} text={booking.centre} />
+        <InfoLine icon={CalendarDays} text={booking.date} />
+        <InfoLine icon={Clock3} text={booking.time} />
+        <InfoLine icon={FileText} text={`Booking ID: ${booking.id}`} />
+      </div>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <span className="rounded-full bg-green-100 px-4 py-2 text-sm font-black text-green-800">{booking.bookingStatus === "called" ? "Your Turn" : "Confirmed"}</span>
+        <Link href="/farmer/status" className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white">View Booking</Link>
+        <Link href="/farmer/book" className="rounded-2xl border border-green-900/15 px-5 py-3 font-black text-green-900">Reschedule</Link>
+      </div>
+    </div>
+  );
+}
+
+function StatusCard({ icon: Icon, title, value, note, tone, href }: { icon: typeof CalendarDays; title: string; value: string; note: string; tone: "green" | "blue" | "amber" | "violet"; href: string }) {
+  const tones = {
+    green: "bg-green-50 text-green-800",
+    blue: "bg-blue-50 text-blue-800",
+    amber: "bg-amber-50 text-amber-800",
+    violet: "bg-violet-50 text-violet-800",
+  };
+  return (
+    <Link href={href} className="rounded-[1.5rem] border border-green-900/10 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+      <span className={cn("grid h-12 w-12 place-items-center rounded-2xl", tones[tone])}>
+        <Icon className="h-6 w-6" />
+      </span>
+      <p className="mt-4 text-sm font-black text-green-950/60">{title}</p>
+      <h3 className="mt-1 text-3xl font-black">{value}</h3>
+      <p className="mt-2 text-sm font-bold text-green-700">{note}</p>
+    </Link>
+  );
+}
+
+function BookingCard({ booking }: { booking: NonNullable<ReturnType<typeof usePrototype>["state"]["bookings"][number]> }) {
+  return (
+    <article className="min-w-[280px] rounded-[1.25rem] border border-green-900/10 bg-[#fffdf6] p-5">
+      <h3 className="text-xl font-black">{booking.crop} Procurement</h3>
+      <p className="mt-1 text-sm font-bold text-green-950/60">Booking ID: {booking.id}</p>
+      <div className="mt-4 grid gap-2 text-sm font-semibold text-green-950/70">
+        <InfoLine icon={MapPin} text={booking.centre} />
+        <InfoLine icon={CalendarDays} text={booking.date} />
+        <InfoLine icon={Clock3} text={booking.time} />
+      </div>
+      <div className="mt-4 grid gap-2 text-sm">
+        <BadgeText label="Queue" value={booking.bookingStatus === "called" ? "Your turn" : `#${booking.queuePosition}`} />
+        <BadgeText label="Procurement" value={statusLabel(booking.procurementStatus)} />
+        <BadgeText label="Payment" value={paymentLabel(booking.paymentStatus)} />
+      </div>
+      <Link href="/farmer/status" className="mt-4 inline-flex items-center gap-2 text-sm font-black text-green-800">
+        View Details <ArrowRight className="h-4 w-4" />
+      </Link>
+    </article>
+  );
+}
+
+function BookingFlow() {
+  const { state, confirmBooking } = usePrototype();
+  const [step, setStep] = useState(0);
+  const [selectedCrop, setSelectedCrop] = useState("Wheat");
+  const [quantity, setQuantity] = useState(25);
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(state.slots[1]);
+  const [modalSlot, setModalSlot] = useState<Slot | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+
+  if (confirmed) {
+    return (
+      <div className="mx-auto max-w-3xl rounded-[2rem] bg-white p-6 text-center shadow-xl sm:p-10">
+        <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 text-green-800">
+          <Check className="h-10 w-10" />
+        </span>
+        <h1 className="mt-5 text-3xl font-black sm:text-4xl">Your Procurement Slot is Confirmed!</h1>
+        <p className="mt-3 text-lg font-bold text-green-800">Booking ID: {demoBookingId}</p>
+        <div className="mx-auto mt-6 grid max-w-xl gap-3 rounded-2xl bg-green-50 p-5 text-left text-base font-semibold">
+          <InfoLine icon={Wheat} text={selectedCrop} />
+          <InfoLine icon={MapPin} text={state.centre.name} />
+          <InfoLine icon={CalendarDays} text="18 September 2026" />
+          <InfoLine icon={Clock3} text={selectedSlot?.label || "10:00 AM - 11:00 AM"} />
+          <InfoLine icon={UsersRound} text="Expected queue: 12 farmers" />
+        </div>
+        <p className="mt-6 rounded-2xl bg-amber-50 px-4 py-3 text-lg font-black text-amber-900">Please arrive 10-15 minutes before your slot.</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link href="/farmer/queue" className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white">View Live Queue</Link>
+          <Link href="/farmer/status" className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">View Booking</Link>
+          <Link href="/farmer" className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">Back to Dashboard</Link>
+          <button className="rounded-2xl bg-green-50 px-5 py-3 font-black text-green-800">Download Booking Receipt</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-5 pb-20 sm:pb-0">
+      <Link href="/farmer" className="inline-flex items-center gap-2 text-sm font-black text-green-800"><ArrowLeft className="h-4 w-4" /> Back to Dashboard</Link>
+      <div className="rounded-[2rem] border border-green-900/10 bg-white p-5 shadow-sm">
+        <div className="grid gap-3 md:grid-cols-4">
+          {steps.map((label, index) => (
+            <div key={label} className={cn("rounded-2xl px-4 py-3 text-sm font-black", index <= step ? "bg-green-700 text-white" : "bg-green-50 text-green-900/60")}>
+              {index + 1}. {label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <section className="rounded-[2rem] border border-green-900/10 bg-white p-5 shadow-sm sm:p-7">
+        {step === 0 && (
+          <div>
+            <h1 className="text-3xl font-black">Farmer Information</h1>
+            <p className="mt-2 text-green-950/70">Enter your details for procurement booking.</p>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {[
+                ["Full Name", state.farmerProfile.name],
+                ["Mobile Number", state.farmerProfile.mobile],
+                ["Farmer ID / Registration Number", state.farmerProfile.farmerId],
+                ["State", state.farmerProfile.state],
+                ["District", state.farmerProfile.district],
+                ["Block / Tehsil", state.farmerProfile.block],
+                ["Village", state.farmerProfile.village],
+              ].map(([label, value]) => (
+                <label key={label} className="grid gap-2 text-sm font-black text-green-950/70">
+                  {label}
+                  <input className="min-h-12 rounded-2xl border border-green-900/15 bg-green-50 px-4 text-base font-bold text-green-950 outline-none focus:ring-2 focus:ring-green-500" defaultValue={value} />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div>
+            <h1 className="text-3xl font-black">Procurement Details</h1>
+            <p className="mt-2 text-green-950/70">Choose crop, quantity, and procurement centre.</p>
+            <h2 className="mt-6 text-xl font-black">Select Crop</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {crops.map((crop) => (
+                <button key={crop} onClick={() => setSelectedCrop(crop)} className={cn("rounded-2xl border p-5 text-left font-black", selectedCrop === crop ? "border-green-700 bg-green-700 text-white" : "border-green-900/10 bg-green-50")}>
+                  <Wheat className="mb-4 h-7 w-7" /> {crop}
+                </button>
+              ))}
+            </div>
+            <label className="mt-6 grid max-w-sm gap-2 text-sm font-black text-green-950/70">
+              Expected Quantity (Quintals)
+              <input type="number" min={1} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} className="min-h-12 rounded-2xl border border-green-900/15 bg-white px-4 text-base font-bold outline-none focus:ring-2 focus:ring-green-500" />
+            </label>
+            <h2 className="mt-6 text-xl font-black">Select Procurement Centre</h2>
+            <div className="mt-3 rounded-2xl border-2 border-green-700 bg-green-50 p-5">
+              <h3 className="text-xl font-black">{state.centre.name}</h3>
+              <p className="mt-2 text-sm font-semibold text-green-950/70">{state.centre.location}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <BadgeText label="Distance" value="8.4 km" />
+                <BadgeText label="Current wait" value="35 minutes" />
+                <BadgeText label="Queue" value="42 farmers" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <h1 className="text-3xl font-black">Choose Your Procurement Slot</h1>
+            <p className="mt-2 text-green-950/70">Select a date and time to avoid unnecessary waiting.</p>
+            <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
+              {["Mon 16", "Tue 17", "Wed 18", "Thu 19", "Fri 20"].map((date) => (
+                <button key={date} className={cn("min-w-24 rounded-2xl px-4 py-3 font-black", date === "Wed 18" ? "bg-green-700 text-white" : "bg-green-50 text-green-950")}>{date}</button>
+              ))}
+            </div>
+            <h2 className="mt-6 text-xl font-black">18 September</h2>
+            <div className="mt-3 grid gap-3">
+              {state.slots.map((slot) => (
+                <button
+                  key={slot.id}
+                  disabled={slot.status === "full" || slot.status === "closed"}
+                  onClick={() => setModalSlot(slot)}
+                  className={cn("flex min-h-20 items-center justify-between rounded-2xl border p-4 text-left transition", slot.id === selectedSlot?.id ? "border-green-700 bg-green-50" : "border-green-900/10 bg-white", (slot.status === "full" || slot.status === "closed") && "opacity-60")}
+                >
+                  <span>
+                    <strong className="block text-lg">{slot.label}</strong>
+                    <span className={cn("mt-1 block text-sm font-black", slot.status === "available" && "text-green-700", slot.status === "limited" && "text-amber-700", slot.status === "full" && "text-red-700", slot.status === "closed" && "text-red-700")}>
+                      {slot.status === "full" ? "Full" : slot.status === "closed" ? "Centre closed" : `${slot.available} slots available`}
+                    </span>
+                  </span>
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <h1 className="text-3xl font-black">Review Your Booking</h1>
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              <ReviewCard title="Farmer" items={[state.farmerProfile.name, `Farmer ID: ${state.farmerProfile.farmerId}`, `Village: ${state.farmerProfile.village}`, `District: ${state.farmerProfile.district}`]} />
+              <ReviewCard title="Procurement" items={[`Crop: ${selectedCrop}`, `Expected Quantity: ${quantity} Quintals`, `Procurement Centre: ${state.centre.name}`]} />
+              <ReviewCard title="Appointment" items={["Date: 18 September 2026", `Time: ${selectedSlot?.label || "10:00 AM - 11:00 AM"}`, "Estimated Queue: 12 farmers"]} />
+            </div>
+            <label className="mt-6 flex items-start gap-3 rounded-2xl bg-green-50 p-4 text-base font-bold">
+              <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-1 h-5 w-5" />
+              I confirm that the information provided is correct.
+            </label>
+          </div>
+        )}
+
+        <div className="mt-8 flex flex-wrap justify-between gap-3">
+          <button disabled={step === 0} onClick={() => setStep((current) => Math.max(0, current - 1))} className="rounded-2xl border border-green-900/15 px-5 py-3 font-black disabled:opacity-40">Back</button>
+          {step < 3 ? (
+            <button onClick={() => setStep((current) => Math.min(3, current + 1))} className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white">Continue</button>
+          ) : (
+            <button
+              disabled={!accepted}
+              onClick={() => {
+                confirmBooking();
+                setConfirmed(true);
+              }}
+              className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white disabled:opacity-40"
+            >
+              Confirm Procurement Slot
+            </button>
+          )}
+        </div>
+      </section>
+
+      {modalSlot && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-green-950/50 p-4">
+          <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl">
+            <h2 className="text-3xl font-black">Confirm Your Slot</h2>
+            <div className="mt-5 grid gap-3 text-base font-semibold">
+              <InfoLine icon={Wheat} text={`Crop: ${selectedCrop}`} />
+              <InfoLine icon={MapPin} text={`Procurement Centre: ${state.centre.name}`} />
+              <InfoLine icon={CalendarDays} text="Date: 18 September 2026" />
+              <InfoLine icon={Clock3} text={`Time: ${modalSlot.label}`} />
+              <InfoLine icon={UsersRound} text="Expected Queue: Approximately 12 farmers" />
+            </div>
+            <p className="mt-5 rounded-2xl bg-green-50 p-4 text-lg font-black text-green-800">Estimated waiting time: 20-30 minutes</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  setSelectedSlot(modalSlot);
+                  setModalSlot(null);
+                  setStep(3);
+                }}
+                className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white"
+              >
+                Confirm Slot
+              </button>
+              <button onClick={() => setModalSlot(null)} className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">Choose Another Slot</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LiveQueue({ booking }: { booking: NonNullable<ReturnType<typeof usePrototype>["state"]["bookings"][number]> }) {
+  const { state } = usePrototype();
+  const [notify, setNotify] = useState(true);
+  return (
+    <PageShell title="Live Procurement Queue" subtitle="Track your turn before visiting the procurement centre.">
+      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+        <div className="rounded-[2rem] bg-green-800 p-7 text-white">
+          <p className="text-sm font-bold text-green-100">Your Queue Position</p>
+          <h2 className="mt-3 text-7xl font-black">{booking.bookingStatus === "called" ? "Now" : `#${booking.queuePosition}`}</h2>
+          <p className="mt-3 text-xl font-bold">{booking.bookingStatus === "called" ? "It is your turn" : `${booking.queueAhead} farmers ahead of you`}</p>
+          <p className="mt-5 rounded-2xl bg-white/12 p-4 text-lg font-black">Estimated waiting time: {booking.estimatedWait}</p>
+        </div>
+        <div className="rounded-[2rem] border border-green-900/10 bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-black">Current Status</h2>
+          <p className="mt-3 rounded-2xl bg-green-50 p-4 font-bold text-green-800">Procurement centre is operating normally.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <BadgeText label="Currently serving token" value={state.currentlyServing} />
+            <BadgeText label="Your token" value="#PROC10234" />
+            <BadgeText label="Estimated turn" value={booking.bookingStatus === "called" ? "Now" : "10:35 AM"} />
+          </div>
+          <label className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-green-900/10 p-4 font-black">
+            <span className="flex items-center gap-3"><Bell className="h-5 w-5 text-green-700" /> Notify me when my turn is approaching</span>
+            <input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="h-5 w-5" />
+          </label>
+        </div>
+      </div>
+      <div className="rounded-[2rem] border border-green-900/10 bg-white p-6 shadow-sm">
+        <h2 className="text-2xl font-black">Queue Progress</h2>
+        <div className="mt-5 grid gap-3 md:grid-cols-4">
+          {["Completed", "Currently Serving", "You", "Waiting Farmers"].map((item, index) => (
+            <div key={item} className={cn("rounded-2xl p-5 text-center font-black", index < 2 ? "bg-green-50 text-green-800" : index === 2 ? "bg-amber-100 text-amber-900" : "bg-slate-50 text-slate-700")}>{item}</div>
+          ))}
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function ProcurementStatus({ booking }: { booking: NonNullable<ReturnType<typeof usePrototype>["state"]["bookings"][number]> }) {
+  const timeline = useMemo(() => {
+    const active = booking.procurementStatus;
+    const order = ["slot-confirmed", "arrived", "weighing", "completed"];
+    const activeIndex = order.indexOf(active);
+    return [
+      ["Registration", "12 Sep, 09:15 AM", "Your farmer profile is registered."],
+      ["Slot Confirmed", "15 Sep, 10:00 AM", "Your procurement slot is confirmed."],
+      ["Farmer Arrived", booking.bookingStatus === "confirmed" ? "Pending" : "18 Sep, 09:48 AM", "Arrival at centre is recorded."],
+      ["Weighing", booking.procurementStatus === "weighing" ? "Now" : booking.procurementStatus === "completed" ? "18 Sep, 10:32 AM" : "Pending", "Your produce is being weighed."],
+      ["Procurement Complete", booking.procurementStatus === "completed" ? "18 Sep, 10:48 AM" : "Pending", "Procurement record is completed."],
+      ["Payment Processing", booking.paymentStatus !== "pending" ? "18 Sep, 11:00 AM" : "Pending", "Payment file is under process."],
+      ["Payment Received", booking.paymentStatus === "received" ? "20 Sep, 02:10 PM" : "Pending", "Payment credited to bank account."],
+    ].map((item, index) => ({ label: item[0], time: item[1], description: item[2], state: index <= activeIndex + 1 ? "done" : index === activeIndex + 2 ? "active" : "upcoming" }));
+  }, [booking]);
+
+  return (
+    <PageShell title="Procurement Status" subtitle="Simple step-by-step tracking from booking to payment.">
+      <div className="rounded-[2rem] border border-green-900/10 bg-white p-6 shadow-sm">
+        <div className="grid gap-4">
+          {timeline.map((item) => (
+            <div key={item.label} className="grid gap-4 rounded-2xl border border-green-900/10 p-4 sm:grid-cols-[52px_1fr]">
+              <span className={cn("grid h-12 w-12 place-items-center rounded-full", item.state === "done" && "bg-green-100 text-green-800", item.state === "active" && "bg-blue-100 text-blue-800", item.state === "upcoming" && "bg-slate-100 text-slate-500")}>
+                {item.state === "done" ? <Check className="h-6 w-6" /> : <Clock3 className="h-6 w-6" />}
+              </span>
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-xl font-black">{item.label}</h2>
+                  <span className="text-sm font-bold text-green-950/60">{item.time}</span>
+                </div>
+                <p className="mt-1 text-green-950/70">{item.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function PaymentStatusView() {
+  const { state } = usePrototype();
+  const booking = state.bookings.find((item) => item.id === demoBookingId) || state.bookings[0];
+  return (
+    <PageShell title="Payment Status" subtitle="Understand your payment without financial jargon.">
+      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+        <div className="rounded-[2rem] bg-amber-100 p-7 text-amber-950">
+          <p className="text-sm font-black uppercase">Payment Amount</p>
+          <h2 className="mt-3 text-5xl font-black">Rs. {booking.amount.toLocaleString("en-IN")}</h2>
+          <p className="mt-4 rounded-2xl bg-white/70 p-4 text-xl font-black">{paymentLabel(state.payment.status)}</p>
+        </div>
+        <div className="rounded-[2rem] border border-green-900/10 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <BadgeText label="Procurement amount" value={`Rs. ${booking.amount.toLocaleString("en-IN")}`} />
+            <BadgeText label="Bank" value={state.payment.bank} />
+            <BadgeText label="Transaction status" value={paymentLabel(state.payment.status)} />
+            <BadgeText label="Expected payment" value={state.payment.status === "received" ? state.payment.receivedDate || "Received" : state.payment.expected} />
+            <BadgeText label="Transaction ID" value={state.payment.transactionId} />
+          </div>
+          <p className="mt-5 rounded-2xl bg-green-50 p-4 font-bold text-green-800">
+            {state.payment.status === "received" ? "Payment Received. The amount has been credited to your registered bank account." : "Your payment is being processed. No action is needed."}
+          </p>
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function SchemesPreview() {
+  const { state } = usePrototype();
+  return (
+    <div className="rounded-[1.5rem] border border-green-900/10 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black">Government Schemes & Benefits</h2>
+          <p className="mt-1 text-green-950/65">Explore schemes and benefits available for farmers.</p>
+        </div>
+        <Link href="/farmer/schemes" className="hidden rounded-full bg-green-50 px-4 py-2 text-sm font-black text-green-800 sm:inline-flex">View All</Link>
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        {state.schemes.slice(0, 4).map((scheme) => (
+          <SchemeCard key={scheme.id} scheme={scheme} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SchemesList() {
+  const { state } = usePrototype();
+  return (
+    <PageShell title="Government Schemes & Benefits" subtitle="Readable scheme information for farmers.">
+      <div className="grid gap-4 md:grid-cols-2">
+        {state.schemes.map((scheme) => (
+          <SchemeCard key={scheme.id} scheme={scheme} />
+        ))}
+      </div>
+    </PageShell>
+  );
+}
+
+function SchemeDetail({ schemeId }: { schemeId?: string }) {
+  const { state, addNotification } = usePrototype();
+  const scheme = state.schemes.find((item) => item.id === schemeId) || state.schemes[0];
+  return (
+    <PageShell title={scheme.name} subtitle={scheme.summary} backHref="/farmer/schemes">
+      <div className="rounded-[2rem] border border-green-900/10 bg-white p-6 shadow-sm">
+        <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+          <div className="space-y-5">
+            <SchemeSection title="About the Scheme" body={scheme.about} />
+            <SchemeSection title="Who is Eligible?" body={scheme.eligibility} />
+            <SchemeSection title="Key Benefits" items={scheme.benefits} />
+            <SchemeSection title="Documents Required" items={scheme.documents} />
+            <SchemeSection title="How to Apply" body={scheme.apply} />
+            <SchemeSection title="Important Dates" body={scheme.dates} />
+          </div>
+          <aside className="rounded-2xl bg-green-50 p-5">
+            <Landmark className="h-9 w-9 text-green-800" />
+            <p className="mt-4 text-sm font-black uppercase text-green-800">Eligibility</p>
+            <p className="mt-1 text-2xl font-black">{scheme.eligible ? "Likely eligible" : "Check with office"}</p>
+            <div className="mt-5 grid gap-3">
+              <button onClick={() => addNotification("Eligibility checked", `${scheme.name} eligibility check is saved for demo.`, "info")} className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white">Check Eligibility</button>
+              <button onClick={() => addNotification("Application started", `${scheme.name} application flow is ready for backend connection.`, "success")} className="rounded-2xl border border-green-900/15 bg-white px-5 py-3 font-black">Apply Now</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function SchemeCard({ scheme }: { scheme: Scheme }) {
+  return (
+    <Link href={`/farmer/schemes/${scheme.id}`} className="rounded-2xl border border-green-900/10 bg-[#fffdf6] p-5 transition hover:-translate-y-1 hover:shadow-lg">
+      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-green-100 text-green-800"><Landmark className="h-5 w-5" /></span>
+      <h3 className="mt-4 text-xl font-black">{scheme.name}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-green-950/70">{scheme.summary}</p>
+      <p className={cn("mt-4 inline-flex rounded-full px-3 py-1 text-xs font-black", scheme.eligible ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")}>{scheme.eligible ? "Eligible" : "Check eligibility"}</p>
+      <span className="mt-4 flex items-center gap-2 text-sm font-black text-green-800">View Details <ArrowRight className="h-4 w-4" /></span>
+    </Link>
+  );
+}
+
+function NotificationsPreview() {
+  const { state } = usePrototype();
+  return (
+    <div className="rounded-[1.5rem] border border-green-900/10 bg-white p-5 shadow-sm">
+      <h2 className="text-xl font-black">Notifications</h2>
+      <div className="mt-4 grid gap-3">
+        {state.notifications.slice(0, 4).map((item) => (
+          <div key={item.id} className="rounded-2xl bg-green-50 p-4">
+            <p className="font-black">{item.title}</p>
+            <p className="mt-1 text-sm leading-relaxed text-green-950/70">{item.message}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ title, message, action }: { title: string; message: string; action: string }) {
+  return (
+    <div className="rounded-[1.5rem] border border-dashed border-green-900/20 bg-white p-5">
+      <CircleAlert className="h-8 w-8 text-amber-700" />
+      <h3 className="mt-3 text-xl font-black">{title}</h3>
+      <p className="mt-2 text-green-950/70">{message}</p>
+      <button className="mt-4 rounded-xl bg-green-50 px-4 py-3 text-sm font-black text-green-800">{action}</button>
+    </div>
+  );
+}
+
+function PageShell({ title, subtitle, children, backHref = "/farmer" }: { title: string; subtitle: string; children: React.ReactNode; backHref?: string }) {
+  return (
+    <div className="space-y-5 pb-20 sm:pb-0">
+      <Link href={backHref} className="inline-flex items-center gap-2 text-sm font-black text-green-800"><ArrowLeft className="h-4 w-4" /> Back</Link>
+      <div>
+        <h1 className="text-4xl font-black tracking-tight">{title}</h1>
+        <p className="mt-2 text-lg text-green-950/70">{subtitle}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function InfoLine({ icon: Icon, text }: { icon: typeof MapPin; text: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Icon className="h-4 w-4 shrink-0 text-green-700" />
+      <span>{text}</span>
+    </span>
+  );
+}
+
+function BadgeText({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/70 p-3 ring-1 ring-green-900/10">
+      <p className="text-xs font-black uppercase text-green-950/50">{label}</p>
+      <p className="mt-1 text-base font-black text-green-950">{value}</p>
+    </div>
+  );
+}
+
+function ReviewCard({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-2xl border border-green-900/10 bg-green-50 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-black">{title}</h2>
+        <button className="text-sm font-black text-green-800">Edit</button>
+      </div>
+      <div className="mt-4 grid gap-2 text-sm font-bold text-green-950/75">
+        {items.map((item) => <p key={item}>{item}</p>)}
+      </div>
+    </div>
+  );
+}
+
+function SchemeSection({ title, body, items }: { title: string; body?: string; items?: string[] }) {
+  return (
+    <section>
+      <h2 className="text-2xl font-black">{title}</h2>
+      {body && <p className="mt-2 text-lg leading-relaxed text-green-950/75">{body}</p>}
+      {items && <ul className="mt-3 grid gap-2 text-lg font-semibold text-green-950/75">{items.map((item) => <li key={item} className="flex gap-2"><Check className="mt-1 h-5 w-5 shrink-0 text-green-700" />{item}</li>)}</ul>}
+    </section>
+  );
+}
+
+function statusLabel(status: string) {
+  if (status === "slot-confirmed") return "Slot Confirmed";
+  if (status === "arrived") return "Farmer Arrived";
+  if (status === "weighing") return "Weighing Pending";
+  return "Completed";
+}
+
+function paymentLabel(status: string) {
+  if (status === "received") return "Payment Received";
+  if (status === "pending") return "Pending";
+  return "Processing";
+}

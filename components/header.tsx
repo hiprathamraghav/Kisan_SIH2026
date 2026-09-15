@@ -1,9 +1,9 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Logo } from "./logo";
-import { Button } from "./ui/button";
 
 const links = ["Home", "About", "Features", "Impact", "FAQ"];
 
@@ -16,7 +16,10 @@ export function Header() {
         <nav className="hidden items-center gap-6 text-xs font-semibold text-forest md:flex">
           {links.map((link) => <a key={link} href={`#${link.toLowerCase()}`} className="transition hover:text-leaf">{link}</a>)}
         </nav>
-        <Button className="hidden bg-forest px-4 py-2 text-xs text-white hover:bg-leaf sm:inline-flex" arrow>Get a Demo</Button>
+        <div className="hidden items-center gap-2 sm:flex">
+          <Link href="/farmer" className="inline-flex items-center justify-center rounded-full bg-forest px-4 py-2.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-leaf">Farmer Portal</Link>
+          <Link href="/operator" className="hidden items-center justify-center rounded-full border border-forest/15 bg-white px-4 py-2.5 text-xs font-semibold text-forest transition hover:bg-mist lg:inline-flex">Centre Operator</Link>
+        </div>
         <button onClick={() => setOpen(!open)} aria-label="Open navigation" className="text-forest md:hidden">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -25,7 +28,8 @@ export function Header() {
         <div className="mx-auto mt-2 max-w-6xl rounded-2xl bg-white p-4 shadow-soft md:hidden">
           <nav className="flex flex-col gap-2 text-sm font-semibold text-forest">
             {links.map((link) => <a key={link} href={`#${link.toLowerCase()}`} onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-mist">{link}</a>)}
-            <Button className="mt-2 bg-forest text-white" arrow>Get a Demo</Button>
+            <Link href="/farmer" onClick={() => setOpen(false)} className="rounded-xl bg-forest px-3 py-3 text-white">Farmer Portal</Link>
+            <Link href="/operator" onClick={() => setOpen(false)} className="rounded-xl bg-mist px-3 py-3 text-forest">Centre Operator</Link>
           </nav>
         </div>
       )}

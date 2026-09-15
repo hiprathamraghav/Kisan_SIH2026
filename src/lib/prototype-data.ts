@@ -1,5 +1,14 @@
-export type BookingStatus = "confirmed" | "checked-in" | "called" | "completed" | "no-show";
-export type ProcurementStatus = "slot-confirmed" | "arrived" | "weighing" | "completed";
+export type BookingStatus =
+  | "confirmed"
+  | "checked-in"
+  | "called"
+  | "completed"
+  | "no-show";
+export type ProcurementStatus =
+  | "slot-confirmed"
+  | "arrived"
+  | "weighing"
+  | "completed";
 export type PaymentStatus = "pending" | "processing" | "received";
 export type CentreStatus = "open" | "delayed" | "closed";
 
@@ -156,11 +165,46 @@ export const initialPrototypeState: PrototypeState = {
     },
   ],
   queue: [
-    { token: "#10221", farmer: "Mahesh Pal", crop: "Wheat", quantity: 22, slot: "09:00", status: "Completed" },
-    { token: "#10222", farmer: "Suresh Singh", crop: "Wheat", quantity: 30, slot: "09:30", status: "Processing" },
-    { token: "#10223", farmer: "Amit Kumar", crop: "Wheat", quantity: 20, slot: "10:00", status: "Waiting" },
-    { token: "#10224", farmer: "Rajesh", crop: "Wheat", quantity: 18, slot: "10:00", status: "Waiting" },
-    { token: "#10234", farmer: "Ramesh Kumar", crop: "Wheat", quantity: 25, slot: "10:00", status: "Waiting" },
+    {
+      token: "#10221",
+      farmer: "Mahesh Pal",
+      crop: "Wheat",
+      quantity: 22,
+      slot: "09:00",
+      status: "Completed",
+    },
+    {
+      token: "#10222",
+      farmer: "Suresh Singh",
+      crop: "Wheat",
+      quantity: 30,
+      slot: "09:30",
+      status: "Processing",
+    },
+    {
+      token: "#10223",
+      farmer: "Amit Kumar",
+      crop: "Wheat",
+      quantity: 20,
+      slot: "10:00",
+      status: "Waiting",
+    },
+    {
+      token: "#10224",
+      farmer: "Rajesh",
+      crop: "Wheat",
+      quantity: 18,
+      slot: "10:00",
+      status: "Waiting",
+    },
+    {
+      token: "#10234",
+      farmer: "Ramesh Kumar",
+      crop: "Wheat",
+      quantity: 25,
+      slot: "10:00",
+      status: "Waiting",
+    },
   ],
   payment: {
     amount: 42500,
@@ -174,7 +218,8 @@ export const initialPrototypeState: PrototypeState = {
       id: "n1",
       type: "info",
       title: "Your procurement slot is tomorrow",
-      message: "Your Wheat procurement slot at Meerut Centre is scheduled for 10:00 AM.",
+      message:
+        "Your Wheat procurement slot at Meerut Centre is scheduled for 10:00 AM.",
       time: "Today",
       read: false,
     },
@@ -182,7 +227,8 @@ export const initialPrototypeState: PrototypeState = {
       id: "n2",
       type: "warning",
       title: "Payment is being processed",
-      message: "Your payment of Rs. 42,500 is being processed. No action is needed.",
+      message:
+        "Your payment of Rs. 42,500 is being processed. No action is needed.",
       time: "Today",
       read: false,
     },
@@ -193,11 +239,23 @@ export const initialPrototypeState: PrototypeState = {
       name: "PM-KISAN",
       summary: "Financial support for eligible farmer families.",
       eligible: true,
-      about: "PM-KISAN provides direct income support to eligible farmer families through government benefit transfer.",
-      eligibility: "Small and marginal farmers with valid land records and Aadhaar-linked bank accounts.",
-      benefits: ["Direct financial assistance", "Transparent transfer to bank account", "Support for seasonal input costs"],
-      documents: ["Aadhaar card", "Bank passbook", "Land record", "Mobile number"],
-      apply: "Apply through the official PM-KISAN portal or nearest Common Service Centre.",
+      about:
+        "PM-KISAN provides direct income support to eligible farmer families through government benefit transfer.",
+      eligibility:
+        "Small and marginal farmers with valid land records and Aadhaar-linked bank accounts.",
+      benefits: [
+        "Direct financial assistance",
+        "Transparent transfer to bank account",
+        "Support for seasonal input costs",
+      ],
+      documents: [
+        "Aadhaar card",
+        "Bank passbook",
+        "Land record",
+        "Mobile number",
+      ],
+      apply:
+        "Apply through the official PM-KISAN portal or nearest Common Service Centre.",
       dates: "Applications are accepted throughout the year.",
     },
     {
@@ -205,23 +263,48 @@ export const initialPrototypeState: PrototypeState = {
       name: "Pradhan Mantri Fasal Bima Yojana",
       summary: "Crop insurance support against notified risks.",
       eligible: true,
-      about: "The scheme helps farmers reduce financial risk from crop loss due to natural calamities, pests, or disease.",
-      eligibility: "Farmers growing notified crops in notified areas can apply.",
-      benefits: ["Crop loss protection", "Affordable premium", "Coverage for notified risks"],
-      documents: ["Aadhaar card", "Crop sowing certificate", "Bank details", "Land record"],
-      apply: "Apply through your bank, insurance portal, or agriculture department office.",
-      dates: "Enrollment deadlines depend on crop season and state notifications.",
+      about:
+        "The scheme helps farmers reduce financial risk from crop loss due to natural calamities, pests, or disease.",
+      eligibility:
+        "Farmers growing notified crops in notified areas can apply.",
+      benefits: [
+        "Crop loss protection",
+        "Affordable premium",
+        "Coverage for notified risks",
+      ],
+      documents: [
+        "Aadhaar card",
+        "Crop sowing certificate",
+        "Bank details",
+        "Land record",
+      ],
+      apply:
+        "Apply through your bank, insurance portal, or agriculture department office.",
+      dates:
+        "Enrollment deadlines depend on crop season and state notifications.",
     },
     {
       id: "sinchayee",
       name: "PM Krishi Sinchayee Yojana",
       summary: "Support for irrigation and efficient water use.",
       eligible: false,
-      about: "The scheme supports improved irrigation coverage and water-use efficiency for farms.",
-      eligibility: "Eligibility depends on state irrigation plans and approved local projects.",
-      benefits: ["Irrigation support", "Water conservation", "Efficient farm water use"],
-      documents: ["Aadhaar card", "Land record", "Project application", "Bank details"],
-      apply: "Contact the district agriculture office for project-specific application steps.",
+      about:
+        "The scheme supports improved irrigation coverage and water-use efficiency for farms.",
+      eligibility:
+        "Eligibility depends on state irrigation plans and approved local projects.",
+      benefits: [
+        "Irrigation support",
+        "Water conservation",
+        "Efficient farm water use",
+      ],
+      documents: [
+        "Aadhaar card",
+        "Land record",
+        "Project application",
+        "Bank details",
+      ],
+      apply:
+        "Contact the district agriculture office for project-specific application steps.",
       dates: "State-wise application windows vary.",
     },
     {
@@ -229,19 +312,54 @@ export const initialPrototypeState: PrototypeState = {
       name: "Agricultural Mechanization",
       summary: "Support for farm machinery and equipment.",
       eligible: true,
-      about: "Mechanization support helps farmers access equipment for improved productivity and reduced labour burden.",
-      eligibility: "Eligible farmers and farmer groups can apply under state machinery subsidy rules.",
-      benefits: ["Machinery subsidy", "Improved productivity", "Support for farmer groups"],
+      about:
+        "Mechanization support helps farmers access equipment for improved productivity and reduced labour burden.",
+      eligibility:
+        "Eligible farmers and farmer groups can apply under state machinery subsidy rules.",
+      benefits: [
+        "Machinery subsidy",
+        "Improved productivity",
+        "Support for farmer groups",
+      ],
       documents: ["Aadhaar card", "Quotation", "Land record", "Bank details"],
-      apply: "Apply through the state agriculture portal or district agriculture office.",
+      apply:
+        "Apply through the state agriculture portal or district agriculture office.",
       dates: "Open as per state subsidy notification.",
     },
   ],
   slots: [
-    { id: "s1", date: "Mon 16", label: "09:00 AM - 10:00 AM", available: 18, capacity: 20, status: "available" },
-    { id: "s2", date: "Wed 18", label: "10:00 AM - 11:00 AM", available: 12, capacity: 20, status: "available" },
-    { id: "s3", date: "Wed 18", label: "11:00 AM - 12:00 PM", available: 4, capacity: 20, status: "limited" },
-    { id: "s4", date: "Thu 19", label: "12:00 PM - 01:00 PM", available: 0, capacity: 20, status: "full" },
+    {
+      id: "s1",
+      date: "Mon 16",
+      label: "09:00 AM - 10:00 AM",
+      available: 18,
+      capacity: 20,
+      status: "available",
+    },
+    {
+      id: "s2",
+      date: "Wed 18",
+      label: "10:00 AM - 11:00 AM",
+      available: 12,
+      capacity: 20,
+      status: "available",
+    },
+    {
+      id: "s3",
+      date: "Wed 18",
+      label: "11:00 AM - 12:00 PM",
+      available: 4,
+      capacity: 20,
+      status: "limited",
+    },
+    {
+      id: "s4",
+      date: "Thu 19",
+      label: "12:00 PM - 01:00 PM",
+      available: 0,
+      capacity: 20,
+      status: "full",
+    },
   ],
   centre: {
     name: "Meerut Procurement Centre",

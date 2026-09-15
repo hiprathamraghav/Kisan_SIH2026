@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  RECEIVED
+  FAILED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  PAYMENT
+}
+
+enum CentreStatus {
+  OPEN
+  DELAYED
+  CLOSED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  CENTRE_OPERATOR
+  PAYMENT_OFFICER
+}
+
+enum SlotStatus {
+  AVAILABLE
+  LIMITED
+  FULL
+  CLOSED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CHECKED_IN
+  CALLED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ProcurementStatus {
+  SLOT_CONFIRMED
+  ARRIVED
+  WEIGHING
+  COMPLETED
+  REJECTED
+}
+
+model Kisan {
+  id            String         @id @default(cuid())
+  kisanId       String         @unique
+  name          String
+  phoneNumber   String         @unique
+  state         String
+  district      String
+  passwordHash  String
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  bookings      Booking[]
+  notifications Notification[]
+}
+
+model Admin {
+  id               String        @id @default(cuid())
+  adminId          String        @unique
+  name             String
+  phoneNumber      String        @unique
+  passwordHash     String
+  role             AdminRole     @default(CENTRE_OPERATOR)
+  permissions      String[]
+  centreId         String?
+  centre           Centre?       @relation(fields: [centreId], references: [id])
+  procurements     Procurement[] @relation("ProcessedProcurements")
+  payments         Payment[]     @relation("ProcessedPayments")
+}
+
+model Centre {
+  id        String             @id @default(cuid())
+  code      String             @unique
+  name      String
+  address   String
+  district  String
+  state     String
+  status    CentreStatus       @default(OPEN)
+  admins    Admin[]
+  slots     ProcurementSlot[]
+  bookings  Booking[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model Crop {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  unit      String    @default("quintal")
+  bookings  Booking[]
+}
+
+model ProcurementSlot {
+  id          String        @id @default(cuid())
+  centreId    String
+  centre      Centre        @relation(fields: [centreId], references: [id])
+  startsAt    DateTime
+  endsAt      DateTime
+  capacity    Int
+  bookedCount Int           @default(0)
+  status      SlotStatus    @default(AVAILABLE)
+  bookings    Booking[]
+  createdAt   DateTime      @default(now())
+  @@index([centreId, startsAt])
+}
+
+model Booking {
+  id                String            @id @default(cuid())
+  bookingCode       String            @unique
+  kisanId           String
+  centreId          String
+  slotId            String
+  cropId            String
+  expectedQuantity  Float
+  queuePosition     Int               @default(0)
+  bookingStatus     BookingStatus     @default(CONFIRMED)
+  procurementStatus ProcurementStatus @default(SLOT_CONFIRMED)
+  kisan             Kisan             @relation(fields: [kisanId], references: [id])
+  centre            Centre            @relation(fields: [centreId], references: [id])
+  slot              ProcurementSlot   @relation(fields: [slotId], references: [id])
+  crop              Crop              @relation(fields: [cropId], references: [id])
+  procurement       Procurement?
+  payment           Payment?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  @@index([centreId, bookingStatus, queuePosition])
+}
+
+model Procurement {
+  id             String   @id @default(cuid())
+  bookingId      String   @unique
+  actualWeight   Float
+  grade          String
+  ratePerQuintal Float
+  amount         Float
+  remarks        String?
+  processedById  String
+  booking        Booking  @relation(fields: [bookingId], references: [id])
+  processedBy    Admin    @relation("ProcessedProcurements", fields: [processedById], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String        @unique
+  amount        Float
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  processedById String?
+  paidAt        DateTime?
+  booking       Booking       @relation(fields: [bookingId], references: [id])
+  processedBy   Admin?        @relation("ProcessedPayments", fields: [processedById], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  kisanId   String
+  type      NotificationType
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  kisan     Kisan            @relation(fields: [kisanId], references: [id])
+  @@index([kisanId, createdAt])
+}

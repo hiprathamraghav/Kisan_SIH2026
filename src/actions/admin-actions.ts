@@ -18,18 +18,49 @@ export async function getOperatorDashboard() {
     where: { id: adminId },
     select: { centreId: true },
   });
-  if (!admin.centreId) return { bookings: [], slots: [], centre: null };
-  return prisma.centre.findUniqueOrThrow({
+  if (!admin.centreId) return { centre: null, bookings: [], slots: [] };
+  const centre = await prisma.centre.findUniqueOrThrow({
     where: { id: admin.centreId },
     include: {
       slots: { orderBy: { startsAt: "asc" } },
       bookings: {
         orderBy: { createdAt: "desc" },
         take: 100,
-        include: { kisan: true, crop: true, payment: true },
+        include: { kisan: true, crop: true, centre: true, slot: true, payment: true, procurement: true },
       },
     },
   });
+  return { centre, bookings: centre.bookings, slots: centre.slots };
+}
+
+export async function updateCentreStatus(
+  centreId: string,
+  status: "OPEN" | "DELAYED" | "CLOSED",
+): Promise<ActionResult> {
+  await requireAdmin();
+  await prisma.centre.update({ where: { id: centreId }, data: { status } });
+  return { success: true, data: undefined };
+}
+
+export async function updateSlotStatus(
+  slotId: string,
+  status: "AVAILABLE" | "LIMITED" | "FULL" | "CLOSED",
+): Promise<ActionResult> {
+  await requireAdmin();
+  await prisma.procurementSlot.update({ where: { id: slotId }, data: { status } });
+  return { success: true, data: undefined };
+}
+
+export async function sendCentreNotification(
+  title: string,
+  message: string,
+): Promise<ActionResult<{ recipients: number }>> {
+  const adminId = await requireAdmin();
+  const admin = await prisma.admin.findUniqueOrThrow({ where: { id: adminId }, select: { centreId: true } });
+  if (!admin.centreId) return { success: false, error: "Your account is not assigned to a centre." };
+  const recipients = await prisma.booking.findMany({ where: { centreId: admin.centreId }, select: { kisanId: true }, distinct: ["kisanId"] });
+  if (recipients.length) await prisma.notification.createMany({ data: recipients.map(({ kisanId }) => ({ kisanId, type: "INFO" as const, title, message })) });
+  return { success: true, data: { recipients: recipients.length } };
 }
 
 export async function checkInBooking(bookingId: string): Promise<ActionResult> {

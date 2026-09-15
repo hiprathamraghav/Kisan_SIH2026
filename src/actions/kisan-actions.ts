@@ -39,6 +39,23 @@ export async function getKisanDashboard() {
   });
 }
 
+export async function getKisanBookingOptions() {
+  await requireKisan();
+  return prisma.centre.findMany({
+    where: { status: { not: "CLOSED" } },
+    include: {
+      slots: {
+        where: { status: { in: ["AVAILABLE", "LIMITED"] } },
+        orderBy: { startsAt: "asc" },
+      },
+    },
+    orderBy: { name: "asc" },
+  }).then(async (centres) => ({
+    centres,
+    crops: await prisma.crop.findMany({ orderBy: { name: "asc" } }),
+  }));
+}
+
 export async function createBooking(
   input: BookingInput,
 ): Promise<ActionResult<{ bookingCode: string }>> {
@@ -49,12 +66,22 @@ export async function createBooking(
   const { centreId, slotId, cropId, expectedQuantity } = parsed.data;
   try {
     const result = await prisma.$transaction(async (tx) => {
+      const slot = await tx.procurementSlot.findUnique({
+        where: { id: slotId },
+        select: { centreId: true, status: true, capacity: true, bookedCount: true },
+      });
+      if (
+        !slot ||
+        slot.centreId !== centreId ||
+        !["AVAILABLE", "LIMITED"].includes(slot.status) ||
+        slot.bookedCount >= slot.capacity
+      ) throw new Error("SLOT_UNAVAILABLE");
       const changed = await tx.procurementSlot.updateMany({
         where: {
           id: slotId,
           centreId,
           status: { in: ["AVAILABLE", "LIMITED"] },
-          bookedCount: { lt: tx.procurementSlot.fields.capacity },
+          bookedCount: slot.bookedCount,
         },
         data: { bookedCount: { increment: 1 } },
       });

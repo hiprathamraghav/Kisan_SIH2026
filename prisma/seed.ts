@@ -65,7 +65,7 @@ async function main() {
 
   await prisma.admin.upsert({
     where: { adminId: "ADM-MEERUT-01" },
-    update: { role: AdminRole.SUPER_ADMIN },
+    update: { role: AdminRole.SUPER_ADMIN, centreId: centre.id },
     create: {
       adminId: "ADM-MEERUT-01",
       name: "Anita Sharma",

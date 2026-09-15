@@ -7,8 +7,21 @@ import { Header } from "../components/header";
 import { Hero } from "../components/hero";
 import { HowItWorks } from "../components/how-it-works";
 import { RealImpact } from "../components/real-impact";
-import { WhyAnnabata } from "../components/why-annabata";
+import { WhyAnnadata } from "../components/why-annadata";
 
 export default function Home() {
-  return <main className="overflow-hidden"><Header /><Hero /><FeatureBar /><WhyAnnabata /><HowItWorks /><Ecosystem /><RealImpact /><DemoCta /><Faq /><Footer /></main>;
+  return (
+    <main className="overflow-hidden">
+      <Header />
+      <Hero />
+      <FeatureBar />
+      <WhyAnnadata />
+      <HowItWorks />
+      <Ecosystem />
+      <RealImpact />
+      <DemoCta />
+      <Faq />
+      <Footer />
+    </main>
+  );
 }

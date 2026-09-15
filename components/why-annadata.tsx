@@ -9,12 +9,12 @@ const items = [
   { icon: LayoutDashboard, title: "Mandi Admin\nDashboard", text: "Live view of expected load and resource allocation for smooth operations." },
 ];
 
-export function WhyAnnabata() {
+export function WhyAnnadata() {
   return (
     <section id="about" className="noise bg-forest px-5 py-16 text-white sm:px-8 lg:py-20">
       <div className="mx-auto max-w-6xl">
         <Reveal className="grid items-end gap-7 lg:grid-cols-[1.4fr_.65fr]">
-          <div><p className="text-[10px] font-bold tracking-[.16em] text-lime">WHY ANNABATA PROCURE-CONNECT</p><h2 className="mt-3 max-w-2xl text-3xl font-medium leading-[1.02] tracking-[-.045em] sm:text-4xl">Everything You Need<br />For a Hassle-Free Procurement Experience</h2></div>
+          <div><p className="text-[10px] font-bold tracking-[.16em] text-lime">WHY ANNADATA PROCURE-CONNECT</p><h2 className="mt-3 max-w-2xl text-3xl font-medium leading-[1.02] tracking-[-.045em] sm:text-4xl">Everything You Need<br />For a Hassle-Free Procurement Experience</h2></div>
           <p className="max-w-sm text-xs leading-relaxed text-white/70 lg:pb-1">A unified platform connecting farmers, mandi officers, and government systems to make procurement faster, fairer and fully transparent.</p>
         </Reveal>
         <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

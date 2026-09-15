@@ -1,4 +1,4 @@
-import { OperatorApp } from "../../../components/prototype/operator-app";
+import { OperatorApp } from "../../components/prototype/operator-app";
 
 export default function OperatorPaymentsPage() {
   return <OperatorApp screen="payments" />;

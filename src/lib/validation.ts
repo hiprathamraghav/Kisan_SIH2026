@@ -35,8 +35,8 @@ export const bookingCropSchema = z.object({
 });
 
 export const bookingSchema = z.object({
-  centreId: z.string().cuid(),
-  slotId: z.string().cuid(),
+  centreId: z.string().min(1, "Select a procurement centre"),
+  slotId: z.string().min(1, "Select a procurement slot"),
   state: z.string().trim().min(1, "Select a state"),
   district: z.string().trim().min(1, "Select a district"),
   tehsil: z.string().trim().min(1, "Select a tehsil"),

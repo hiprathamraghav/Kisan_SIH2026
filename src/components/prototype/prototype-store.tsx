@@ -120,10 +120,11 @@ function mapKisanState(data: Awaited<ReturnType<typeof getKisanDashboard>>): Pro
   const first = bookings[0];
   return {
     ...emptyState,
-    farmerProfile: { name: data.name, mobile: data.phoneNumber, farmerId: data.kisanId, state: data.state, district: data.district, block: "", village: "" },
+    farmerProfile: { name: data.name, mobile: data.phoneNumber, farmerId: data.kisanId, state: data.state, district: data.district, block: data.tehsil || "", village: data.village || "" },
     bookings,
     payment: first ? { amount: first.amount, bank: "", status: first.paymentStatus, transactionId: "", expected: "" } : emptyState.payment,
     notifications: data.notifications.map((item) => ({ id: item.id, type: item.type.toLowerCase() as PrototypeState["notifications"][number]["type"], title: item.title, message: item.message, time: formatDate(item.createdAt), read: Boolean(item.readAt) })),
+    schemes: [],
     centre: first ? { ...emptyState.centre, name: first.centre, location: first.centre, status: "open" } : emptyState.centre,
   };
 }
@@ -159,6 +160,7 @@ export function PrototypeProvider({ children, role }: { children: ReactNode; rol
         const mapped = mapKisanState(dashboard);
         setState({
           ...mapped,
+          schemes: options.schemes.map((scheme) => ({ id: scheme.slug, name: scheme.name, summary: scheme.summary, eligible: true, about: scheme.about, eligibility: scheme.eligibility, benefits: scheme.benefits, documents: scheme.documents, apply: scheme.apply, dates: scheme.dates })),
           slots: options.centres.flatMap((centre) => centre.slots.map((slot) => ({
             id: slot.id,
             date: formatDate(slot.startsAt),

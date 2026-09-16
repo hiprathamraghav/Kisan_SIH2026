@@ -143,7 +143,7 @@ export const cropMaster = [
 ];
 
 export function calculateProcessingMinutes(totalQuantity: number) {
-  return Math.ceil((30 + totalQuantity * 4) * 1.05);
+  return Math.ceil(((20 + totalQuantity * 1.5))/60);
 }
 
 export function isValidLocation(state: string, district: string, tehsil: string, village: string) {

@@ -23,14 +23,29 @@ export async function getOperatorDashboard() {
     where: { id: admin.centreId },
     include: {
       slots: { orderBy: { startsAt: "asc" } },
-      bookings: {
-        orderBy: { createdAt: "desc" },
-        take: 100,
-        include: { kisan: true, crop: true, centre: true, slot: true, payment: true, procurement: true },
-      },
     },
   });
-  return { centre, bookings: centre.bookings, slots: centre.slots };
+  const bookings = await prisma.booking.findMany({
+    where: { centreId: admin.centreId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      bookingCode: true,
+      expectedQuantity: true,
+      queuePosition: true,
+      bookingStatus: true,
+      procurementStatus: true,
+      createdAt: true,
+      crop: { select: { name: true } },
+      centre: { select: { name: true } },
+      slot: { select: { startsAt: true, endsAt: true } },
+      payment: { select: { amount: true, status: true } },
+      procurement: { select: { actualWeight: true, grade: true, amount: true } },
+      kisan: { select: { name: true, phoneNumber: true, kisanId: true, state: true, district: true } },
+    },
+  });
+  return { centre, bookings, slots: centre.slots };
 }
 
 export async function updateCentreStatus(

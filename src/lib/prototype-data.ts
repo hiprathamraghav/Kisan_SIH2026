@@ -17,10 +17,16 @@ export type Booking = {
   id: string;
   databaseId?: string;
   crop: string;
+  crops?: { name: string; quantity: number }[];
   centre: string;
+  state?: string;
+  district?: string;
+  tehsil?: string;
+  village?: string;
   date: string;
   time: string;
   quantity: number;
+  processingMinutes?: number;
   queuePosition: number;
   queueAhead: number;
   estimatedWait: string;

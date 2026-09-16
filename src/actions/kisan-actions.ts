@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { createBookingCode } from "@/lib/identifiers";
+import { calculateProcessingMinutes, cropMaster, isValidLocation, locationHierarchy } from "@/lib/procurement-master-data";
 import prisma from "@/lib/prisma";
 import { bookingSchema, type BookingInput } from "@/lib/validation";
 import { type ActionResult, validationError } from "./types";
@@ -26,12 +27,19 @@ export async function getKisanDashboard() {
       bookings: {
         orderBy: { createdAt: "desc" },
         take: 10,
-        include: {
-          crop: true,
-          centre: true,
-          slot: true,
-          payment: true,
-          procurement: true,
+        select: {
+          id: true,
+          bookingCode: true,
+          expectedQuantity: true,
+          queuePosition: true,
+          bookingStatus: true,
+          procurementStatus: true,
+          createdAt: true,
+          crop: { select: { name: true } },
+          centre: { select: { name: true } },
+          slot: { select: { startsAt: true, endsAt: true } },
+          payment: { select: { amount: true, status: true } },
+          procurement: { select: { actualWeight: true, grade: true, amount: true } },
         },
       },
       notifications: { orderBy: { createdAt: "desc" }, take: 10 },
@@ -41,6 +49,13 @@ export async function getKisanDashboard() {
 
 export async function getKisanBookingOptions() {
   await requireKisan();
+  for (const name of cropMaster) {
+    await prisma.crop.upsert({
+      where: { name },
+      update: { unit: "quintal" },
+      create: { name, unit: "quintal" },
+    });
+  }
   return prisma.centre.findMany({
     where: { status: { not: "CLOSED" } },
     include: {
@@ -53,6 +68,7 @@ export async function getKisanBookingOptions() {
   }).then(async (centres) => ({
     centres,
     crops: await prisma.crop.findMany({ orderBy: { name: "asc" } }),
+    locations: locationHierarchy,
   }));
 }
 
@@ -63,12 +79,17 @@ export async function createBooking(
   if (!parsed.success)
     return validationError<{ bookingCode: string }>(parsed.error);
   const kisanId = await requireKisan();
-  const { centreId, slotId, cropId, expectedQuantity } = parsed.data;
+  const { centreId, slotId, state, district, tehsil, village, crops } = parsed.data;
+  if (!isValidLocation(state, district, tehsil, village)) {
+    return { success: false, error: "Please choose a valid State, District, Tehsil and Village combination." };
+  }
+  const totalQuantity = crops.reduce((total, crop) => total + crop.quantity, 0);
+  const processingMinutes = calculateProcessingMinutes(totalQuantity);
   try {
     const result = await prisma.$transaction(async (tx) => {
       const slot = await tx.procurementSlot.findUnique({
         where: { id: slotId },
-        select: { centreId: true, status: true, capacity: true, bookedCount: true },
+        select: { centreId: true, status: true, capacity: true, bookedCount: true, startsAt: true, endsAt: true },
       });
       if (
         !slot ||
@@ -76,6 +97,19 @@ export async function createBooking(
         !["AVAILABLE", "LIMITED"].includes(slot.status) ||
         slot.bookedCount >= slot.capacity
       ) throw new Error("SLOT_UNAVAILABLE");
+      const existingBookings = await tx.booking.findMany({
+        where: {
+          slotId,
+          bookingStatus: { notIn: ["CANCELLED", "NO_SHOW"] },
+        },
+        select: { processingMinutes: true },
+      });
+      const usedProcessingMinutes = existingBookings.reduce(
+        (total, booking) => total + booking.processingMinutes,
+        0,
+      );
+      const requestedEndsAt = new Date(slot.startsAt.getTime() + (usedProcessingMinutes + processingMinutes) * 60_000);
+      if (requestedEndsAt > slot.endsAt) throw new Error("SLOT_DURATION_CONFLICT");
       const changed = await tx.procurementSlot.updateMany({
         where: {
           id: slotId,
@@ -86,16 +120,33 @@ export async function createBooking(
         data: { bookedCount: { increment: 1 } },
       });
       if (changed.count !== 1) throw new Error("SLOT_UNAVAILABLE");
+      const cropIds = crops.map((crop) => crop.cropId);
+      const validCropCount = await tx.crop.count({ where: { id: { in: cropIds } } });
+      if (validCropCount !== cropIds.length) throw new Error("INVALID_CROP");
+      const primaryCrop = crops[0];
       const booking = await tx.booking.create({
         data: {
           bookingCode: createBookingCode(),
           kisanId,
           centreId,
           slotId,
-          cropId,
-          expectedQuantity,
+          cropId: primaryCrop.cropId,
+          state,
+          district,
+          tehsil,
+          village,
+          expectedQuantity: totalQuantity,
+          totalQuantity,
+          processingMinutes,
+          queuePosition: existingBookings.length + 1,
           bookingStatus: "CONFIRMED",
           procurementStatus: "SLOT_CONFIRMED",
+          cropItems: {
+            create: crops.map((crop) => ({
+              cropId: crop.cropId,
+              quantity: crop.quantity,
+            })),
+          },
         },
       });
       await tx.notification.create({
@@ -103,7 +154,7 @@ export async function createBooking(
           kisanId,
           type: "SUCCESS",
           title: "Procurement slot confirmed",
-          message: `Your booking ${booking.bookingCode} has been confirmed.`,
+          message: `Your booking ${booking.bookingCode} has been confirmed. Estimated processing time is ${processingMinutes} minutes.`,
         },
       });
       return booking;
@@ -115,6 +166,13 @@ export async function createBooking(
         success: false,
         error: "This slot is no longer available. Please choose another slot.",
       };
+    if (error instanceof Error && error.message === "SLOT_DURATION_CONFLICT")
+      return {
+        success: false,
+        error: "This slot is too short for your crop quantity. Please choose another available time.",
+      };
+    if (error instanceof Error && error.message === "INVALID_CROP")
+      return { success: false, error: "One or more selected crops are invalid." };
     console.error("createBooking", error);
     return {
       success: false,

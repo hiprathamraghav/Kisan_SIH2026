@@ -17,7 +17,15 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { CentreStatus, PaymentStatus, PrototypeState } from "../../lib/prototype-data";
 
 type Role = "KISAN" | "ADMIN";
-type BookingInput = { centreId: string; slotId: string; cropId: string; expectedQuantity: number };
+type BookingInput = {
+  centreId: string;
+  slotId: string;
+  state: string;
+  district: string;
+  tehsil: string;
+  village: string;
+  crops: { cropId: string; quantity: number }[];
+};
 type BookingOptions = Awaited<ReturnType<typeof getKisanBookingOptions>>;
 type BookingRecord = {
   id: string;
@@ -31,6 +39,13 @@ type BookingRecord = {
   slot: { startsAt: Date; endsAt: Date };
   payment: { amount: number; status: keyof typeof paymentMap } | null;
   procurement: { actualWeight: number; grade: string; amount: number } | null;
+  cropItems?: { quantity: number; crop: { name: string } }[];
+  state?: string | null;
+  district?: string | null;
+  tehsil?: string | null;
+  village?: string | null;
+  totalQuantity?: number | null;
+  processingMinutes?: number | null;
   kisan: { name: string; phoneNumber: string; kisanId: string; state: string; district: string };
 };
 
@@ -71,14 +86,23 @@ function formatTime(start: Date | string, end: Date | string) {
 }
 
 function mapBooking(booking: BookingRecord) {
+  const crops = booking.cropItems?.length
+    ? booking.cropItems.map((item) => ({ name: item.crop.name, quantity: item.quantity }))
+    : [{ name: booking.crop.name, quantity: booking.expectedQuantity }];
   return {
     id: booking.bookingCode,
     databaseId: booking.id,
-    crop: booking.crop.name,
+    crop: crops.map((item) => item.name).join(", "),
+    crops,
     centre: booking.centre.name,
+    state: booking.state || booking.kisan.state,
+    district: booking.district || booking.kisan.district,
+    tehsil: booking.tehsil || "",
+    village: booking.village || "",
     date: formatDate(booking.slot.startsAt),
     time: formatTime(booking.slot.startsAt, booking.slot.endsAt),
-    quantity: booking.expectedQuantity,
+    quantity: booking.totalQuantity || booking.expectedQuantity,
+    processingMinutes: booking.processingMinutes || undefined,
     queuePosition: booking.queuePosition,
     queueAhead: Math.max(booking.queuePosition - 1, 0),
     estimatedWait: booking.bookingStatus === "CALLED" ? "Proceed to counter" : "",

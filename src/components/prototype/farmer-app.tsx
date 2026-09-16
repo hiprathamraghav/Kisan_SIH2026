@@ -18,6 +18,7 @@ import {
   Languages,
   MapPin,
   Menu,
+  Search,
   Sprout,
   Tractor,
   User,
@@ -26,6 +27,8 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { logout } from "../../actions";
+import { calculateProcessingMinutes } from "../../lib/procurement-master-data";
 import type { Booking, Scheme, Slot } from "../../lib/prototype-data";
 import { cn } from "../ui/cn";
 import { PrototypeProvider, usePrototype } from "./prototype-store";
@@ -147,21 +150,20 @@ function FarmerShell({
                 <ChevronDown className="h-4 w-4 text-green-900/60" />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-green-900/10 bg-white p-2 text-sm font-semibold shadow-xl">
-                  {[
-                    "My Profile",
-                    "My Bookings",
-                    "Notifications",
-                    "Help",
-                    "Logout",
-                  ].map((item) => (
-                    <button
-                      key={item}
-                      className="block w-full rounded-xl px-3 py-2 text-left hover:bg-green-50"
-                    >
-                      {item}
-                    </button>
-                  ))}
+                <div className="absolute right-0 z-50 mt-2 w-52 rounded-2xl border border-green-900/10 bg-white p-2 text-sm font-semibold shadow-xl">
+                  <Link onClick={() => setProfileOpen(false)} href="/farmer#profile" className="block rounded-xl px-3 py-2 text-left hover:bg-green-50">My Profile</Link>
+                  <Link onClick={() => setProfileOpen(false)} href="/farmer#bookings" className="block rounded-xl px-3 py-2 text-left hover:bg-green-50">My Bookings</Link>
+                  <Link onClick={() => setProfileOpen(false)} href="/farmer#notifications" className="block rounded-xl px-3 py-2 text-left hover:bg-green-50">Notifications</Link>
+                  <Link onClick={() => setProfileOpen(false)} href="/farmer#help" className="block rounded-xl px-3 py-2 text-left hover:bg-green-50">Help</Link>
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      void logout();
+                    }}
+                    className="block w-full rounded-xl px-3 py-2 text-left text-red-700 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
                 </div>
               )}
             </div>
@@ -228,6 +230,7 @@ function FarmerDashboard({
 }) {
   const { state } = usePrototype();
   const noBooking = state.bookings.length === 0;
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   return (
     <div className="space-y-6 pb-20 sm:pb-0">
@@ -324,7 +327,7 @@ function FarmerDashboard({
           </div>
           <div className="mt-5 flex gap-4 overflow-x-auto pb-2">
             {state.bookings.map((item) => (
-              <BookingCard key={item.id} booking={item} />
+              <BookingCard key={item.id} booking={item} onView={() => setSelectedBooking(item)} />
             ))}
           </div>
         </div>
@@ -382,6 +385,10 @@ function FarmerDashboard({
           action="Track Payment"
         />
       </section>
+
+      {selectedBooking && (
+        <BookingDetailsModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />
+      )}
     </div>
   );
 }
@@ -485,8 +492,10 @@ function StatusCard({
 
 function BookingCard({
   booking,
+  onView,
 }: {
   booking?: Booking;
+  onView?: () => void;
 }) {
   if (!booking) {
     return <PageShell title="Live Procurement Queue" subtitle="Track your turn before visiting the procurement centre."><EmptyState title="No active booking" message="Book a procurement slot to see your live queue position." action="Book a Slot" /></PageShell>;
@@ -520,77 +529,139 @@ function BookingCard({
           value={paymentLabel(booking.paymentStatus)}
         />
       </div>
-      <Link
-        href="/farmer/status"
+      <button
+        onClick={onView}
         className="mt-4 inline-flex items-center gap-2 text-sm font-black text-green-800"
       >
         View Details <ArrowRight className="h-4 w-4" />
-      </Link>
+      </button>
     </article>
+  );
+}
+
+function BookingDetailsModal({ booking, onClose }: { booking: Booking; onClose: () => void }) {
+  const { state } = usePrototype();
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-green-950/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-black uppercase text-green-700">Booking Details</p>
+            <h2 className="mt-1 text-3xl font-black">{booking.id}</h2>
+          </div>
+          <button onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full bg-green-50 text-green-900" aria-label="Close booking details">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <ReviewCard title="Farmer Details" onEdit={onClose} items={[
+            state.farmerProfile.name,
+            `Farmer ID: ${state.farmerProfile.farmerId}`,
+            `Mobile: ${state.farmerProfile.mobile}`,
+          ]} />
+          <ReviewCard title="Location" onEdit={onClose} items={[
+            `State: ${booking.state || state.farmerProfile.state}`,
+            `District: ${booking.district || state.farmerProfile.district}`,
+            `Tehsil: ${booking.tehsil || "-"}`,
+            `Village: ${booking.village || "-"}`,
+          ]} />
+          <ReviewCard title="Procurement" onEdit={onClose} items={[
+            ...(booking.crops?.map((item) => `${item.name}: ${item.quantity} quintals`) || [`${booking.crop}: ${booking.quantity} quintals`]),
+            `Total quantity: ${booking.quantity} quintals`,
+            `Processing time: ${booking.processingMinutes || calculateProcessingMinutes(booking.quantity)} minutes`,
+          ]} />
+          <ReviewCard title="Booking" onEdit={onClose} items={[
+            `Centre: ${booking.centre}`,
+            `Date: ${booking.date}`,
+            `Time: ${booking.time}`,
+            `Queue position: #${booking.queuePosition}`,
+            `Status: ${statusLabel(booking.procurementStatus)}`,
+            `Payment: ${paymentLabel(booking.paymentStatus)}`,
+          ]} />
+        </div>
+      </div>
+    </div>
   );
 }
 
 function BookingFlow() {
   const { state, bookingOptions, confirmBooking } = usePrototype();
   const [step, setStep] = useState(0);
-  const [selectedCrop, setSelectedCrop] = useState("");
-  const [quantity, setQuantity] = useState(25);
-  const [modalSlot, setModalSlot] = useState<Slot | null>(null);
+  const [stateName, setStateName] = useState(state.farmerProfile.state || "");
+  const [district, setDistrict] = useState(state.farmerProfile.district || "");
+  const [tehsil, setTehsil] = useState(state.farmerProfile.block || "");
+  const [village, setVillage] = useState(state.farmerProfile.village || "");
+  const [cropQuery, setCropQuery] = useState("");
+  const [selectedCropIds, setSelectedCropIds] = useState<string[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
+  const [modalSlot, setModalSlot] = useState<Slot | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [bookingCode, setBookingCode] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   const crops = bookingOptions?.crops || [];
   const centre = bookingOptions?.centres[0];
+  const locations = bookingOptions?.locations || [];
+  const selectedState = locations.find((item) => item.state === stateName);
+  const selectedDistrict = selectedState?.districts.find((item) => item.district === district);
+  const selectedTehsil = selectedDistrict?.tehsils.find((item) => item.tehsil === tehsil);
+  const selectedCrops = crops.filter((crop) => selectedCropIds.includes(crop.id));
+  const totalQuantity = selectedCropIds.reduce((total, cropId) => total + (Number(quantities[cropId]) || 0), 0);
+  const processingMinutes = calculateProcessingMinutes(totalQuantity || 0);
+  const slotRows = state.slots.filter((slot) => !selectedDate || slot.date === selectedDate);
+  const filteredCrops = crops.filter((crop) => crop.name.toLowerCase().includes(cropQuery.toLowerCase())).slice(0, 12);
 
   useEffect(() => {
-    if (!selectedCrop && crops[0]) setSelectedCrop(crops[0].name);
-    if (!selectedSlot && state.slots[0]) setSelectedSlot(state.slots[0]);
-  }, [crops, selectedCrop, selectedSlot, state.slots]);
+    if (!stateName && locations[0]) setStateName(locations[0].state);
+  }, [locations, stateName]);
+
+  useEffect(() => {
+    if (!selectedDate && state.slots[0]) setSelectedDate(state.slots[0].date);
+  }, [selectedDate, state.slots]);
+
+  const addCrop = (cropId: string) => {
+    if (selectedCropIds.includes(cropId)) return;
+    setSelectedCropIds((current) => [...current, cropId]);
+    setQuantities((current) => ({ ...current, [cropId]: current[cropId] || 1 }));
+    setSelectedSlot(null);
+    setCropQuery("");
+  };
+
+  const removeCrop = (cropId: string) => {
+    setSelectedCropIds((current) => current.filter((item) => item !== cropId));
+    setSelectedSlot(null);
+  };
+
+  const canContinue = step === 0
+    ? Boolean(stateName && district && tehsil && village)
+    : step === 1
+      ? Boolean(centre && selectedCropIds.length && totalQuantity > 0)
+      : step === 2
+        ? Boolean(selectedSlot)
+        : accepted;
 
   if (confirmed) {
     return (
       <div className="mx-auto max-w-3xl rounded-[2rem] bg-white p-6 text-center shadow-xl sm:p-10">
-        <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 text-green-800">
-          <Check className="h-10 w-10" />
-        </span>
-        <h1 className="mt-5 text-3xl font-black sm:text-4xl">
-          Your Procurement Slot is Confirmed!
-        </h1>
-        <p className="mt-3 text-lg font-bold text-green-800">
-          Booking ID: {bookingCode}
-        </p>
+        <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 text-green-800"><Check className="h-10 w-10" /></span>
+        <h1 className="mt-5 text-3xl font-black sm:text-4xl">Your Procurement Slot is Confirmed!</h1>
+        <p className="mt-3 text-lg font-bold text-green-800">Booking ID: {bookingCode}</p>
         <div className="mx-auto mt-6 grid max-w-xl gap-3 rounded-2xl bg-green-50 p-5 text-left text-base font-semibold">
-          <InfoLine icon={Wheat} text={selectedCrop} />
-          <InfoLine icon={MapPin} text={centre?.name || ""} />
+          <InfoLine icon={Wheat} text={selectedCrops.map((crop) => `${crop.name} (${quantities[crop.id]} q)`).join(", ")} />
+          <InfoLine icon={MapPin} text={`${centre?.name || ""}, ${village}, ${district}`} />
           <InfoLine icon={CalendarDays} text={selectedSlot?.date || ""} />
           <InfoLine icon={Clock3} text={selectedSlot?.label || ""} />
+          <InfoLine icon={UsersRound} text={`Estimated processing time: ${processingMinutes} minutes`} />
         </div>
-        <p className="mt-6 rounded-2xl bg-amber-50 px-4 py-3 text-lg font-black text-amber-900">
-          Please arrive 10-15 minutes before your slot.
-        </p>
+        <p className="mt-6 rounded-2xl bg-amber-50 px-4 py-3 text-lg font-black text-amber-900">Please arrive 10-15 minutes before your slot.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/farmer/queue"
-            className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white"
-          >
-            View Live Queue
-          </Link>
-          <Link
-            href="/farmer/status"
-            className="rounded-2xl border border-green-900/15 px-5 py-3 font-black"
-          >
-            View Booking
-          </Link>
-          <Link
-            href="/farmer"
-            className="rounded-2xl border border-green-900/15 px-5 py-3 font-black"
-          >
-            Back to Dashboard
-          </Link>
-          <button className="rounded-2xl bg-green-50 px-5 py-3 font-black text-green-800">
-            Download Booking Receipt
-          </button>
+          <Link href="/farmer/queue" className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white">View Live Queue</Link>
+          <Link href="/farmer/status" className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">View Booking</Link>
+          <Link href="/farmer" className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">Back to Dashboard</Link>
         </div>
       </div>
     );
@@ -598,26 +669,11 @@ function BookingFlow() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 pb-20 sm:pb-0">
-      <Link
-        href="/farmer"
-        className="inline-flex items-center gap-2 text-sm font-black text-green-800"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-      </Link>
+      <Link href="/farmer" className="inline-flex items-center gap-2 text-sm font-black text-green-800"><ArrowLeft className="h-4 w-4" /> Back to Dashboard</Link>
       <div className="rounded-[2rem] border border-green-900/10 bg-white p-5 shadow-sm">
         <div className="grid gap-3 md:grid-cols-4">
           {steps.map((label, index) => (
-            <div
-              key={label}
-              className={cn(
-                "rounded-2xl px-4 py-3 text-sm font-black",
-                index <= step
-                  ? "bg-green-700 text-white"
-                  : "bg-green-50 text-green-900/60",
-              )}
-            >
-              {index + 1}. {label}
-            </div>
+            <div key={label} className={cn("rounded-2xl px-4 py-3 text-sm font-black", index <= step ? "bg-green-700 text-white" : "bg-green-50 text-green-900/60")}>{index + 1}. {label}</div>
           ))}
         </div>
       </div>
@@ -626,33 +682,18 @@ function BookingFlow() {
         {step === 0 && (
           <div>
             <h1 className="text-3xl font-black">Farmer Information</h1>
-            <p className="mt-2 text-green-950/70">
-              Enter your details for procurement booking.
-            </p>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {[
-                ["Full Name", state.farmerProfile.name],
-                ["Mobile Number", state.farmerProfile.mobile],
-                [
-                  "Farmer ID / Registration Number",
-                  state.farmerProfile.farmerId,
-                ],
-                ["State", state.farmerProfile.state],
-                ["District", state.farmerProfile.district],
-                ["Block / Tehsil", state.farmerProfile.block],
-                ["Village", state.farmerProfile.village],
-              ].map(([label, value]) => (
-                <label
-                  key={label}
-                  className="grid gap-2 text-sm font-black text-green-950/70"
-                >
-                  {label}
-                  <input
-                    className="min-h-12 rounded-2xl border border-green-900/15 bg-green-50 px-4 text-base font-bold text-green-950 outline-none focus:ring-2 focus:ring-green-500"
-                    defaultValue={value}
-                  />
-                </label>
+            <p className="mt-2 text-green-950/70">Farmer identity is loaded from your authenticated profile and cannot be edited here.</p>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {[["Full Name", state.farmerProfile.name], ["Mobile Number", state.farmerProfile.mobile], ["Farmer ID / Registration Number", state.farmerProfile.farmerId]].map(([label, value]) => (
+                <label key={label} className="grid gap-2 text-sm font-black text-green-950/70">{label}<input readOnly disabled value={value} className="min-h-12 rounded-2xl border border-green-900/15 bg-green-50 px-4 text-base font-bold text-green-950 opacity-100" /></label>
               ))}
+            </div>
+            <h2 className="mt-7 text-xl font-black">Location</h2>
+            <div className="mt-3 grid gap-4 md:grid-cols-4">
+              <SelectField label="State" value={stateName} onChange={(value) => { setStateName(value); setDistrict(""); setTehsil(""); setVillage(""); }} options={locations.map((item) => item.state)} />
+              <SelectField label="District" value={district} disabled={!stateName} onChange={(value) => { setDistrict(value); setTehsil(""); setVillage(""); }} options={selectedState?.districts.map((item) => item.district) || []} />
+              <SelectField label="Tehsil" value={tehsil} disabled={!district} onChange={(value) => { setTehsil(value); setVillage(""); }} options={selectedDistrict?.tehsils.map((item) => item.tehsil) || []} />
+              <SelectField label="Village" value={village} disabled={!tehsil} onChange={setVillage} options={selectedTehsil?.villages || []} />
             </div>
           </div>
         )}
@@ -660,112 +701,50 @@ function BookingFlow() {
         {step === 1 && (
           <div>
             <h1 className="text-3xl font-black">Procurement Details</h1>
-            <p className="mt-2 text-green-950/70">
-              Choose crop, quantity, and procurement centre.
-            </p>
-            <h2 className="mt-6 text-xl font-black">Select Crop</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {crops.map((crop) => (
-                <button
-                  key={crop.id}
-                  onClick={() => setSelectedCrop(crop.name)}
-                  className={cn(
-                    "rounded-2xl border p-5 text-left font-black",
-                    selectedCrop === crop.name
-                      ? "border-green-700 bg-green-700 text-white"
-                      : "border-green-900/10 bg-green-50",
-                  )}
-                >
-                  <Wheat className="mb-4 h-7 w-7" /> {crop.name}
+            <p className="mt-2 text-green-950/70">Search and select one or more crops. Add quantity separately for every crop.</p>
+            <label className="relative mt-6 block">
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-green-800/50" />
+              <input value={cropQuery} onChange={(event) => setCropQuery(event.target.value)} placeholder="Search crops like Wheat, Mustard, Maize..." className="min-h-12 w-full rounded-2xl border border-green-900/15 bg-white pl-12 pr-4 text-base font-bold outline-none focus:ring-2 focus:ring-green-500" />
+            </label>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredCrops.map((crop) => (
+                <button key={crop.id} type="button" disabled={selectedCropIds.includes(crop.id)} onClick={() => addCrop(crop.id)} className="rounded-2xl border border-green-900/10 bg-green-50 p-3 text-left text-sm font-black disabled:opacity-45">
+                  {crop.name}
                 </button>
               ))}
             </div>
-            <label className="mt-6 grid max-w-sm gap-2 text-sm font-black text-green-950/70">
-              Expected Quantity (Quintals)
-              <input
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(event) => setQuantity(Number(event.target.value))}
-                className="min-h-12 rounded-2xl border border-green-900/15 bg-white px-4 text-base font-bold outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </label>
-            <h2 className="mt-6 text-xl font-black">
-              Select Procurement Centre
-            </h2>
+            <div className="mt-6 grid gap-3">
+              {selectedCrops.map((crop) => (
+                <div key={crop.id} className="grid gap-3 rounded-2xl border border-green-900/10 bg-white p-4 md:grid-cols-[1fr_180px_auto] md:items-end">
+                  <p className="text-lg font-black">{crop.name}</p>
+                  <label className="grid gap-1 text-sm font-black text-green-950/70">Quantity (quintals)<input type="number" min={0.01} step="0.01" value={quantities[crop.id] || ""} onChange={(event) => { setQuantities((current) => ({ ...current, [crop.id]: Number(event.target.value) })); setSelectedSlot(null); }} className="min-h-11 rounded-xl border border-green-900/15 px-3 font-bold" /></label>
+                  <button onClick={() => removeCrop(crop.id)} className="rounded-xl bg-red-50 px-3 py-3 font-black text-red-700">Remove</button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 grid gap-3 rounded-2xl bg-green-50 p-5 sm:grid-cols-3">
+              <BadgeText label="Total Quantity" value={`${totalQuantity.toFixed(2)} quintals`} />
+              <BadgeText label="Processing Time" value={`${processingMinutes} minutes`} />
+              <BadgeText label="Formula" value="(30 + qty x 4) x 1.05" />
+            </div>
+            <h2 className="mt-6 text-xl font-black">Procurement Centre</h2>
             <div className="mt-3 rounded-2xl border-2 border-green-700 bg-green-50 p-5">
-              <h3 className="text-xl font-black">{state.centre.name}</h3>
-              <p className="mt-2 text-sm font-semibold text-green-950/70">
-                {state.centre.location}
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <BadgeText label="Distance" value="8.4 km" />
-                <BadgeText label="Current wait" value="Live queue" />
-                <BadgeText label="Queue" value="Live count" />
-              </div>
+              <h3 className="text-xl font-black">{centre?.name || state.centre.name}</h3>
+              <p className="mt-2 text-sm font-semibold text-green-950/70">{centre?.address || state.centre.location}</p>
             </div>
           </div>
         )}
 
         {step === 2 && (
           <div>
-            <h1 className="text-3xl font-black">
-              Choose Your Procurement Slot
-            </h1>
-            <p className="mt-2 text-green-950/70">
-              Select a date and time to avoid unnecessary waiting.
-            </p>
-            <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
-              {["Mon 16", "Tue 17", "Wed 18", "Thu 19", "Fri 20"].map(
-                (date) => (
-                  <button
-                    key={date}
-                    className={cn(
-                      "min-w-24 rounded-2xl px-4 py-3 font-black",
-                      date === "Wed 18"
-                        ? "bg-green-700 text-white"
-                        : "bg-green-50 text-green-950",
-                    )}
-                  >
-                    {date}
-                  </button>
-                ),
-              )}
-            </div>
-            <h2 className="mt-6 text-xl font-black">18 September</h2>
-            <div className="mt-3 grid gap-3">
-              {state.slots.map((slot) => (
-                <button
-                  key={slot.id}
-                  disabled={slot.status === "full" || slot.status === "closed"}
-                  onClick={() => setModalSlot(slot)}
-                  className={cn(
-                    "flex min-h-20 items-center justify-between rounded-2xl border p-4 text-left transition",
-                    slot.id === selectedSlot?.id
-                      ? "border-green-700 bg-green-50"
-                      : "border-green-900/10 bg-white",
-                    (slot.status === "full" || slot.status === "closed") &&
-                      "opacity-60",
-                  )}
-                >
-                  <span>
-                    <strong className="block text-lg">{slot.label}</strong>
-                    <span
-                      className={cn(
-                        "mt-1 block text-sm font-black",
-                        slot.status === "available" && "text-green-700",
-                        slot.status === "limited" && "text-amber-700",
-                        slot.status === "full" && "text-red-700",
-                        slot.status === "closed" && "text-red-700",
-                      )}
-                    >
-                      {slot.status === "full"
-                        ? "Full"
-                        : slot.status === "closed"
-                          ? "Centre closed"
-                          : `${slot.available} slots available`}
-                    </span>
-                  </span>
+            <h1 className="text-3xl font-black">Choose Your Procurement Slot</h1>
+            <p className="mt-2 text-green-950/70">Available slots are filtered by date and revalidated by the backend before booking.</p>
+            <label className="mt-6 grid max-w-sm gap-2 text-sm font-black text-green-950/70">Booking Date<select value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); setSelectedSlot(null); }} className="min-h-12 rounded-2xl border border-green-900/15 px-4 font-bold"><option value="">Select date</option>{[...new Set(state.slots.map((slot) => slot.date))].map((date) => <option key={date} value={date}>{date}</option>)}</select></label>
+            <div className="mt-5 grid gap-3">
+              {slotRows.length === 0 && <EmptyState title="No slots available" message="No valid slots are available for this date. Please choose another date." action="Choose another date" />}
+              {slotRows.map((slot) => (
+                <button key={slot.id} disabled={slot.status === "full" || slot.status === "closed"} onClick={() => setModalSlot(slot)} className={cn("flex min-h-20 items-center justify-between rounded-2xl border p-4 text-left transition", slot.id === selectedSlot?.id ? "border-green-700 bg-green-50" : "border-green-900/10 bg-white", (slot.status === "full" || slot.status === "closed") && "opacity-60")}>
+                  <span><strong className="block text-lg">{slot.label}</strong><span className="mt-1 block text-sm font-black">{slot.status === "full" ? "Full" : slot.status === "closed" ? "Centre closed" : `${slot.available} slots available`}</span></span>
                   <ArrowRight className="h-5 w-5" />
                 </button>
               ))}
@@ -776,81 +755,31 @@ function BookingFlow() {
         {step === 3 && (
           <div>
             <h1 className="text-3xl font-black">Review Your Booking</h1>
-            <div className="mt-6 grid gap-4 lg:grid-cols-3">
-              <ReviewCard
-                title="Farmer"
-                items={[
-                  state.farmerProfile.name,
-                  `Farmer ID: ${state.farmerProfile.farmerId}`,
-                  `Village: ${state.farmerProfile.village}`,
-                  `District: ${state.farmerProfile.district}`,
-                ]}
-              />
-              <ReviewCard
-                title="Procurement"
-                items={[
-                  `Crop: ${selectedCrop}`,
-                  `Expected Quantity: ${quantity} Quintals`,
-                  `Procurement Centre: ${state.centre.name}`,
-                ]}
-              />
-              <ReviewCard
-                title="Appointment"
-                items={[
-                  `Date: ${selectedSlot?.date || "Not selected"}`,
-                  `Time: ${selectedSlot?.label || "Not selected"}`,
-                ]}
-              />
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              <ReviewCard title="Farmer" onEdit={() => setStep(0)} items={[state.farmerProfile.name, `Farmer ID: ${state.farmerProfile.farmerId}`, `Mobile: ${state.farmerProfile.mobile}`]} />
+              <ReviewCard title="Location" onEdit={() => setStep(0)} items={[`State: ${stateName}`, `District: ${district}`, `Tehsil: ${tehsil}`, `Village: ${village}`]} />
+              <ReviewCard title="Procurement" onEdit={() => setStep(1)} items={[...selectedCrops.map((crop) => `${crop.name}: ${quantities[crop.id]} quintals`), `Total quantity: ${totalQuantity.toFixed(2)} quintals`, `Processing time: ${processingMinutes} minutes`, `Centre: ${centre?.name || state.centre.name}`]} />
+              <ReviewCard title="Appointment" onEdit={() => setStep(2)} items={[`Date: ${selectedSlot?.date || "Not selected"}`, `Time: ${selectedSlot?.label || "Not selected"}`]} />
             </div>
-            <label className="mt-6 flex items-start gap-3 rounded-2xl bg-green-50 p-4 text-base font-bold">
-              <input
-                type="checkbox"
-                checked={accepted}
-                onChange={(event) => setAccepted(event.target.checked)}
-                className="mt-1 h-5 w-5"
-              />
-              I confirm that the information provided is correct.
-            </label>
+            {submitError && <p className="mt-5 rounded-2xl bg-red-50 p-4 font-bold text-red-800">{submitError}</p>}
+            <label className="mt-6 flex items-start gap-3 rounded-2xl bg-green-50 p-4 text-base font-bold"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="mt-1 h-5 w-5" />I confirm that the information provided is correct.</label>
           </div>
         )}
 
         <div className="mt-8 flex flex-wrap justify-between gap-3">
-          <button
-            disabled={step === 0}
-            onClick={() => setStep((current) => Math.max(0, current - 1))}
-            className="rounded-2xl border border-green-900/15 px-5 py-3 font-black disabled:opacity-40"
-          >
-            Back
-          </button>
+          <button disabled={step === 0 || submitting} onClick={() => setStep((current) => Math.max(0, current - 1))} className="rounded-2xl border border-green-900/15 px-5 py-3 font-black disabled:opacity-40">Back</button>
           {step < 3 ? (
-            <button
-              onClick={() => setStep((current) => Math.min(3, current + 1))}
-              className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white"
-            >
-              Continue
-            </button>
+            <button disabled={!canContinue} onClick={() => setStep((current) => Math.min(3, current + 1))} className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white disabled:opacity-40">Continue</button>
           ) : (
-            <button
-              disabled={!accepted}
-              onClick={() => {
-                const crop = crops.find((item) => item.name === selectedCrop);
-                if (!centre || !selectedSlot || !crop) return;
-                void confirmBooking({
-                  centreId: centre.id,
-                  slotId: selectedSlot.id,
-                  cropId: crop.id,
-                  expectedQuantity: quantity,
-                }).then((code) => {
-                  if (code) {
-                    setBookingCode(code);
-                    setConfirmed(true);
-                  }
-                });
-              }}
-              className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white disabled:opacity-40"
-            >
-              Confirm Procurement Slot
-            </button>
+            <button disabled={!canContinue || submitting} onClick={() => {
+              if (!centre || !selectedSlot) return;
+              setSubmitting(true);
+              setSubmitError("");
+              void confirmBooking({ centreId: centre.id, slotId: selectedSlot.id, state: stateName, district, tehsil, village, crops: selectedCropIds.map((cropId) => ({ cropId, quantity: Number(quantities[cropId]) })) })
+                .then((code) => { if (code) { setBookingCode(code); setConfirmed(true); } })
+                .catch((error) => setSubmitError(error instanceof Error ? error.message : "Unable to confirm booking."))
+                .finally(() => setSubmitting(false));
+            }} className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white disabled:opacity-40">{submitting ? "Confirming booking..." : "Confirm Procurement Slot"}</button>
           )}
         </div>
       </section>
@@ -860,38 +789,15 @@ function BookingFlow() {
           <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl">
             <h2 className="text-3xl font-black">Confirm Your Slot</h2>
             <div className="mt-5 grid gap-3 text-base font-semibold">
-              <InfoLine icon={Wheat} text={`Crop: ${selectedCrop}`} />
-              <InfoLine
-                icon={MapPin}
-                text={`Procurement Centre: ${state.centre.name}`}
-              />
+              <InfoLine icon={Wheat} text={`Total quantity: ${totalQuantity.toFixed(2)} quintals`} />
+              <InfoLine icon={MapPin} text={`Procurement Centre: ${centre?.name || state.centre.name}`} />
               <InfoLine icon={CalendarDays} text={`Date: ${modalSlot.date}`} />
               <InfoLine icon={Clock3} text={`Time: ${modalSlot.label}`} />
-              <InfoLine
-                icon={UsersRound}
-                text="Expected Queue: Approximately 12 farmers"
-              />
+              <InfoLine icon={UsersRound} text={`Estimated processing: ${processingMinutes} minutes`} />
             </div>
-            <p className="mt-5 rounded-2xl bg-green-50 p-4 text-lg font-black text-green-800">
-              Estimated waiting time: 20-30 minutes
-            </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                onClick={() => {
-                  setSelectedSlot(modalSlot);
-                  setModalSlot(null);
-                  setStep(3);
-                }}
-                className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white"
-              >
-                Confirm Slot
-              </button>
-              <button
-                onClick={() => setModalSlot(null)}
-                className="rounded-2xl border border-green-900/15 px-5 py-3 font-black"
-              >
-                Choose Another Slot
-              </button>
+              <button onClick={() => { setSelectedSlot(modalSlot); setModalSlot(null); setStep(3); }} className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white">Confirm Slot</button>
+              <button onClick={() => setModalSlot(null)} className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">Choose Another Slot</button>
             </div>
           </div>
         </div>
@@ -1378,12 +1284,57 @@ function BadgeText({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReviewCard({ title, items }: { title: string; items: string[] }) {
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="grid gap-2 text-sm font-black text-green-950/70">
+      {label}
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-12 rounded-2xl border border-green-900/15 bg-white px-4 text-base font-bold text-green-950 outline-none focus:ring-2 focus:ring-green-500 disabled:bg-green-50 disabled:text-green-950/45"
+      >
+        <option value="">Select {label}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ReviewCard({
+  title,
+  items,
+  onEdit,
+}: {
+  title: string;
+  items: string[];
+  onEdit?: () => void;
+}) {
   return (
     <div className="rounded-2xl border border-green-900/10 bg-green-50 p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-black">{title}</h2>
-        <button className="text-sm font-black text-green-800">Edit</button>
+        {onEdit && (
+          <button onClick={onEdit} className="text-sm font-black text-green-800">
+            Edit
+          </button>
+        )}
       </div>
       <div className="mt-4 grid gap-2 text-sm font-bold text-green-950/75">
         {items.map((item) => (

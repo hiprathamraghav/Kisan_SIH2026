@@ -10,6 +10,7 @@ import {
   ProcurementStatus,
   SlotStatus,
 } from "../src/generated/prisma/client";
+import { cropMaster } from "../src/lib/procurement-master-data";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString)
@@ -34,21 +35,12 @@ async function main() {
     },
   });
 
-  const wheat = await prisma.crop.upsert({
-    where: { name: "Wheat" },
+  await Promise.all(cropMaster.map((name) => prisma.crop.upsert({
+    where: { name },
     update: { unit: "quintal" },
-    create: { name: "Wheat", unit: "quintal" },
-  });
-  await prisma.crop.upsert({
-    where: { name: "Paddy / Rice" },
-    update: {},
-    create: { name: "Paddy / Rice", unit: "quintal" },
-  });
-  await prisma.crop.upsert({
-    where: { name: "Maize" },
-    update: {},
-    create: { name: "Maize", unit: "quintal" },
-  });
+    create: { name, unit: "quintal" },
+  })));
+  const wheat = await prisma.crop.findUniqueOrThrow({ where: { name: "Wheat" } });
 
   const kisan = await prisma.kisan.upsert({
     where: { phoneNumber: "9876543210" },
@@ -102,10 +94,22 @@ async function main() {
       slotId: slot.id,
       cropId: wheat.id,
       expectedQuantity: 25,
+      totalQuantity: 25,
+      processingMinutes: 137,
+      state: "Uttar Pradesh",
+      district: "Meerut",
+      tehsil: "Daurala",
+      village: "Sardhana",
       queuePosition: 12,
       bookingStatus: BookingStatus.CONFIRMED,
       procurementStatus: ProcurementStatus.SLOT_CONFIRMED,
     },
+  });
+
+  await prisma.bookingCrop.upsert({
+    where: { bookingId_cropId: { bookingId: booking.id, cropId: wheat.id } },
+    update: { quantity: 25 },
+    create: { bookingId: booking.id, cropId: wheat.id, quantity: 25 },
   });
 
   await prisma.payment.upsert({

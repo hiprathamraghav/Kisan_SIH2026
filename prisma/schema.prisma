@@ -64,6 +64,8 @@ model Kisan {
   phoneNumber   String         @unique
   state         String
   district      String
+  tehsil        String?
+  village       String?
   passwordHash  String
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
@@ -106,6 +108,7 @@ model Crop {
   name      String    @unique
   unit      String    @default("quintal")
   bookings  Booking[]
+  quantities BookingCrop[]
 }
 
 model ProcurementSlot {
@@ -129,7 +132,13 @@ model Booking {
   centreId          String
   slotId            String
   cropId            String
+  state             String?
+  district          String?
+  tehsil            String?
+  village           String?
   expectedQuantity  Float
+  totalQuantity     Float             @default(0)
+  processingMinutes Int               @default(0)
   queuePosition     Int               @default(0)
   bookingStatus     BookingStatus     @default(CONFIRMED)
   procurementStatus ProcurementStatus @default(SLOT_CONFIRMED)
@@ -137,11 +146,25 @@ model Booking {
   centre            Centre            @relation(fields: [centreId], references: [id])
   slot              ProcurementSlot   @relation(fields: [slotId], references: [id])
   crop              Crop              @relation(fields: [cropId], references: [id])
+  cropItems         BookingCrop[]
   procurement       Procurement?
   payment           Payment?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   @@index([centreId, bookingStatus, queuePosition])
+}
+
+model BookingCrop {
+  id        String   @id @default(cuid())
+  bookingId String
+  cropId    String
+  quantity  Float
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  crop      Crop     @relation(fields: [cropId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([bookingId, cropId])
+  @@index([cropId])
 }
 
 model Procurement {

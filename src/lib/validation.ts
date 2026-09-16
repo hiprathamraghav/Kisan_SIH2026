@@ -26,14 +26,34 @@ export const adminLoginSchema = z.object({
   password: z.string().min(1, "Password is required").max(100),
 });
 
-export const bookingSchema = z.object({
+export const bookingCropSchema = z.object({
   cropId: z.string().cuid(),
-  centreId: z.string().cuid(),
-  slotId: z.string().cuid(),
-  expectedQuantity: z.coerce
+  quantity: z.coerce
     .number()
     .positive("Quantity must be greater than zero")
     .max(1000),
+});
+
+export const bookingSchema = z.object({
+  centreId: z.string().cuid(),
+  slotId: z.string().cuid(),
+  state: z.string().trim().min(1, "Select a state"),
+  district: z.string().trim().min(1, "Select a district"),
+  tehsil: z.string().trim().min(1, "Select a tehsil"),
+  village: z.string().trim().min(1, "Select a village"),
+  crops: z.array(bookingCropSchema).min(1, "Select at least one crop").max(12),
+}).superRefine((value, ctx) => {
+  const ids = new Set<string>();
+  value.crops.forEach((crop, index) => {
+    if (ids.has(crop.cropId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["crops", index, "cropId"],
+        message: "Duplicate crop selected.",
+      });
+    }
+    ids.add(crop.cropId);
+  });
 });
 
 export const bookingStatusSchema = z.enum([

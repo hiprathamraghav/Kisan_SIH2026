@@ -722,10 +722,10 @@ function BookingFlow() {
                 </div>
               ))}
             </div>
-            <div className="mt-6 grid gap-3 rounded-2xl bg-green-50 p-5 sm:grid-cols-3">
+            <div className="mt-6 grid gap-3 rounded-2xl bg-green-50 p-5 sm:grid-cols-2">
               <BadgeText label="Total Quantity" value={`${totalQuantity.toFixed(2)} quintals`} />
-              <BadgeText label="Processing Time" value={`${processingMinutes} minutes`} />
-              <BadgeText label="Formula" value="(30 + qty x 4) x 1.05" />
+              <BadgeText label="Processing Time" value={`${processingMinutes} Hours`} />
+              {/* <BadgeText label="Formula" value="(30 + qty x 4) x 1.05" /> */}
             </div>
             <h2 className="mt-6 text-xl font-black">Procurement Centre</h2>
             <div className="mt-3 rounded-2xl border-2 border-green-700 bg-green-50 p-5">
@@ -797,7 +797,7 @@ function BookingFlow() {
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
               <button onClick={() => { setSelectedSlot(modalSlot); setModalSlot(null); setStep(3); }} className="rounded-2xl bg-green-800 px-5 py-3 font-black text-white">Confirm Slot</button>
-              <button onClick={() => setModalSlot(null)} className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">Choose Another Slot</button>
+              {/* <button onClick={() => setModalSlot(null)} className="rounded-2xl border border-green-900/15 px-5 py-3 font-black">Choose Another Slot</button> */}
             </div>
           </div>
         </div>

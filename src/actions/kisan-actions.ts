@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { createBookingCode } from "@/lib/identifiers";
-import { calculateProcessingMinutes, cropMaster, isValidLocation, locationHierarchy } from "@/lib/procurement-master-data";
+import { calculateProcessingMinutes, isValidLocation, locationHierarchy } from "@/lib/procurement-master-data";
 import prisma from "@/lib/prisma";
 import { bookingSchema, type BookingInput } from "@/lib/validation";
 import { type ActionResult, validationError } from "./types";
@@ -24,6 +24,8 @@ export async function getKisanDashboard() {
       phoneNumber: true,
       state: true,
       district: true,
+      tehsil: true,
+      village: true,
       bookings: {
         orderBy: { createdAt: "desc" },
         take: 10,
@@ -36,8 +38,16 @@ export async function getKisanDashboard() {
           procurementStatus: true,
           createdAt: true,
           crop: { select: { name: true } },
+          cropItems: { select: { quantity: true, crop: { select: { name: true } } } },
+          kisan: { select: { state: true, district: true } },
           centre: { select: { name: true } },
           slot: { select: { startsAt: true, endsAt: true } },
+          state: true,
+          district: true,
+          tehsil: true,
+          village: true,
+          totalQuantity: true,
+          processingMinutes: true,
           payment: { select: { amount: true, status: true } },
           procurement: { select: { actualWeight: true, grade: true, amount: true } },
         },
@@ -49,13 +59,6 @@ export async function getKisanDashboard() {
 
 export async function getKisanBookingOptions() {
   await requireKisan();
-  for (const name of cropMaster) {
-    await prisma.crop.upsert({
-      where: { name },
-      update: { unit: "quintal" },
-      create: { name, unit: "quintal" },
-    });
-  }
   return prisma.centre.findMany({
     where: { status: { not: "CLOSED" } },
     include: {
@@ -66,9 +69,10 @@ export async function getKisanBookingOptions() {
     },
     orderBy: { name: "asc" },
   }).then(async (centres) => ({
-    centres,
+    centres: centres.sort((left, right) => (left.code === "UP-MRT-001" ? -1 : right.code === "UP-MRT-001" ? 1 : left.name.localeCompare(right.name))),
     crops: await prisma.crop.findMany({ orderBy: { name: "asc" } }),
     locations: locationHierarchy,
+    schemes: await prisma.scheme.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
   }));
 }
 
@@ -154,11 +158,11 @@ export async function createBooking(
           kisanId,
           type: "SUCCESS",
           title: "Procurement slot confirmed",
-          message: `Your booking ${booking.bookingCode} has been confirmed. Estimated processing time is ${processingMinutes} minutes.`,
+          message: `Your booking ${booking.bookingCode} has been confirmed. Estimated processing time is ${processingMinutes} Hours.`,
         },
       });
       return booking;
-    });
+    }, { maxWait: 20_000, timeout: 30_000 });
     return { success: true, data: { bookingCode: result.bookingCode } };
   } catch (error) {
     if (error instanceof Error && error.message === "SLOT_UNAVAILABLE")

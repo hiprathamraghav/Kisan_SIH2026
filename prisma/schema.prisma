@@ -207,3 +207,19 @@ model Notification {
   kisan     Kisan            @relation(fields: [kisanId], references: [id])
   @@index([kisanId, createdAt])
 }
+
+model Scheme {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  summary     String
+  about       String
+  eligibility String
+  benefits    String[]
+  documents   String[]
+  apply       String
+  dates       String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
